@@ -38,6 +38,13 @@ export default uniHelper(
       'style/no-mixed-spaces-and-tabs': 'off', // 允许空格和 Tab 混合
       'unused-imports/no-unused-vars': 'off', // 允许未使用的导入变量
       'perfectionist/sort-objects': 'off', // 不强制对象属性排序
+      'perfectionist/sort-imports': 'off', // 不强制导入排序
+      'perfectionist/sort-named-imports': 'off', // 不强制命名导入排序
+      'perfectionist/sort-classes': 'off', // 不强制类成员排序
+      'style/no-multi-spaces': 'off', // 允许注释前对齐空格
+      'unused-imports/no-unused-imports': 'off', // 允许未使用的导入
+      'antfu/if-newline': 'off', // 不强制 if / else 换行格式
+      'style/brace-style': 'off', // 不强制大括号换行风格
     },
   },
 )

@@ -1,4 +1,11 @@
 <script setup lang="ts">
+// 跳转到商品列表页（新功能！）
+function goToProducts() {
+  uni.navigateTo({
+    url: '/pages/products/products',
+  })
+}
+
 // 跳转到演示页面
 function goToDemo() {
   uni.navigateTo({
@@ -68,13 +75,17 @@ function openDocs() {
     </view>
 
     <view class="actions">
-      <button class="btn btn-primary" @click="goToDemo">
+      <!-- 新加：商品列表入口 -->
+      <button class="btn btn-primary" @click="goToProducts">
+        🛍️ 商品列表
+      </button>
+      <button class="btn btn-success" @click="goToDemo">
         体验云开发功能
       </button>
-      <button class="btn btn-success" @click="goToLogin">
+      <button class="btn btn-info" @click="goToLogin">
         选择登录方式
       </button>
-      <button class="btn btn-info" @click="goToProfile">
+      <button class="btn btn-warning" @click="goToProfile">
         查看用户信息
       </button>
       <button class="btn btn-secondary" @click="openDocs">
@@ -184,6 +195,12 @@ function openDocs() {
   background: linear-gradient(45deg, #3498db, #74b9ff);
   color: white;
   box-shadow: 0 8rpx 20rpx rgba(52, 152, 219, 0.3);
+}
+
+.btn-warning {
+  background: linear-gradient(45deg, #f39c12, #f1c40f);
+  color: white;
+  box-shadow: 0 8rpx 20rpx rgba(243, 156, 18, 0.3);
 }
 
 .btn-secondary {
