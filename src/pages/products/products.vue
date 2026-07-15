@@ -373,24 +373,25 @@ async function fetchProducts(isRefresh = false) {
 }
 
 /**
- * 下拉刷新处理函数
- * uni-app 的 onPullDownRefresh 生命周期
+ * 下拉刷新处理
+ * 【知识点】onPullDownRefresh 从 '@dcloudio/uni-app' 导入后，
+ *   必须以 onPullDownRefresh(() => { ... }) 的形式注册，不能声明为普通函数
  */
-async function onPullDownRefresh() {
+onPullDownRefresh(async () => {
   await fetchProducts(true) // 传 true 表示刷新
 
   // 停止下拉刷新动画
   uni.stopPullDownRefresh()
-}
+})
 
 /**
- * 触底加载更多处理函数
- * uni-app 的 onReachBottom 生命周期
+ * 触底加载更多处理
+ * 【知识点】同理，onReachBottom 也必须以回调形式注册
  */
-async function onReachBottom() {
+onReachBottom(async () => {
   if (!hasMore.value || isLoading.value) return
   await fetchProducts()
-}
+})
 
 // ============================================================
 // 第5部分：页面生命周期
