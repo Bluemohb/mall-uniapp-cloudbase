@@ -15,6 +15,15 @@
   - reactive() 用于定义响应式对象
   - computed() 用于定义计算属性（依赖其他数据自动更新）
   - uni-app 的生命周期函数：onLoad, onShow, onReachBottom 等
+
+  共以下几个部分：
+    1. 导入依赖
+    2. 定义数据类型（TypeScript 接口）
+    3. 响应式数据定义
+      3.5 示例数据（学习用）
+    4. 数据查询方法
+    5. 页面生命周期
+    6. 事件处理
 -->
 <script setup lang="ts">
 // ============================================================
@@ -103,70 +112,97 @@ const sampleProducts = [
     price: 79,
     originalPrice: 159,
     image: 'https://picsum.photos/seed/tshirt/400/400',
+    images: ['https://picsum.photos/seed/tshirt1/750/750', 'https://picsum.photos/seed/tshirt2/750/750', 'https://picsum.photos/seed/tshirt3/750/750'],
     category: '服装',
     sales: 1280,
     stock: 99,
     rating: 4.8,
     description: '100%纯棉面料，亲肤透气，夏日必备基础款。',
+    specs: [
+      { name: '颜色', values: [{ label: '白色', value: 'white' }, { label: '黑色', value: 'black' }, { label: '灰色', value: 'gray' }] },
+      { name: '尺码', values: [{ label: 'S', value: 'S' }, { label: 'M', value: 'M' }, { label: 'L', value: 'L' }, { label: 'XL', value: 'XL' }] },
+    ],
   },
   {
     name: '无线蓝牙耳机 Pro',
     price: 299,
     originalPrice: 499,
     image: 'https://picsum.photos/seed/earphone/400/400',
+    images: ['https://picsum.photos/seed/earphone1/750/750', 'https://picsum.photos/seed/earphone2/750/750', 'https://picsum.photos/seed/earphone3/750/750'],
     category: '数码',
     sales: 3560,
     stock: 50,
     rating: 4.9,
     description: '主动降噪，30小时续航，Hi-Fi音质。',
+    specs: [
+      { name: '颜色', values: [{ label: '星光白', value: 'white' }, { label: '曜石黑', value: 'black' }, { label: '雾霾蓝', value: 'blue' }] },
+    ],
   },
   {
     name: '北欧风简约台灯',
     price: 128,
     originalPrice: 199,
     image: 'https://picsum.photos/seed/lamp/400/400',
+    images: ['https://picsum.photos/seed/lamp1/750/750', 'https://picsum.photos/seed/lamp2/750/750'],
     category: '家居',
     sales: 890,
     stock: 120,
     rating: 4.6,
     description: '三档调光，护眼LED，书房卧室两用。',
+    specs: [
+      { name: '颜色', values: [{ label: '米白色', value: 'white' }, { label: '深灰色', value: 'gray' }] },
+    ],
   },
   {
     name: '大容量双肩包 旅行必备',
     price: 159,
     originalPrice: 259,
     image: 'https://picsum.photos/seed/bag/400/400',
+    images: ['https://picsum.photos/seed/bag1/750/750', 'https://picsum.photos/seed/bag2/750/750', 'https://picsum.photos/seed/bag3/750/750'],
     category: '配饰',
     sales: 2100,
     stock: 75,
     rating: 4.7,
     description: '防泼水面料，多隔层设计，可放15.6寸笔记本。',
+    specs: [
+      { name: '颜色', values: [{ label: '经典黑', value: 'black' }, { label: '海军蓝', value: 'navy' }, { label: '卡其色', value: 'khaki' }] },
+    ],
   },
   {
     name: '速干运动短裤 透气跑步',
     price: 89,
     image: 'https://picsum.photos/seed/shorts/400/400',
+    images: ['https://picsum.photos/seed/shorts1/750/750', 'https://picsum.photos/seed/shorts2/750/750'],
     category: '服装',
     sales: 1680,
     stock: 200,
     rating: 4.5,
     description: '四面弹力面料，速干排汗，运动无束缚。',
+    specs: [
+      { name: '颜色', values: [{ label: '黑色', value: 'black' }, { label: '深灰', value: 'gray' }] },
+      { name: '尺码', values: [{ label: 'M', value: 'M' }, { label: 'L', value: 'L' }, { label: 'XL', value: 'XL' }, { label: '2XL', value: '2XL' }] },
+    ],
   },
   {
     name: '智能手环 心率监测版',
     price: 199,
     originalPrice: 329,
     image: 'https://picsum.photos/seed/watch/400/400',
+    images: ['https://picsum.photos/seed/watch1/750/750', 'https://picsum.photos/seed/watch2/750/750', 'https://picsum.photos/seed/watch3/750/750'],
     category: '数码',
     sales: 5420,
     stock: 30,
     rating: 4.8,
     description: '全天候心率监测，血氧检测，14天超长续航。',
+    specs: [
+      { name: '颜色', values: [{ label: '午夜黑', value: 'black' }, { label: '星光银', value: 'silver' }] },
+    ],
   },
   {
     name: '日式陶瓷碗 套装4只',
     price: 68,
     image: 'https://picsum.photos/seed/bowl/400/400',
+    images: ['https://picsum.photos/seed/bowl1/750/750', 'https://picsum.photos/seed/bowl2/750/750'],
     category: '家居',
     sales: 760,
     stock: 300,
@@ -178,11 +214,15 @@ const sampleProducts = [
     price: 129,
     originalPrice: 229,
     image: 'https://picsum.photos/seed/sunglass/400/400',
+    images: ['https://picsum.photos/seed/sunglass1/750/750', 'https://picsum.photos/seed/sunglass2/750/750'],
     category: '配饰',
     sales: 980,
     stock: 85,
     rating: 4.6,
     description: '偏光镜片，UV400防护，金属框架轻巧舒适。',
+    specs: [
+      { name: '颜色', values: [{ label: '黑色', value: 'black' }, { label: '茶色', value: 'brown' }, { label: '银色', value: 'silver' }] },
+    ],
   },
 ]
 
