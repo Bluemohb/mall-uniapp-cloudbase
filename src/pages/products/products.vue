@@ -40,6 +40,10 @@ import { app } from '@/utils/cloudbase'
 // computed: 定义计算属性（自动追踪依赖）
 import { ref, reactive, computed } from 'vue'
 
+// 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
+// 在 <script setup> 中使用这些钩子时，不能直接写函数名，必须显式 import
+import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+
 // ============================================================
 // 第2部分：定义数据类型（TypeScript 接口）
 // ============================================================

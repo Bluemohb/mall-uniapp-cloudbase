@@ -22,6 +22,9 @@
 import { app } from '@/utils/cloudbase'
 import { ref, computed, watch } from 'vue'
 
+// 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
+import { onLoad } from '@dcloudio/uni-app'
+
 // ============================================================
 // 第2部分：数据类型定义
 // ============================================================
@@ -331,6 +334,13 @@ function buyNow() {
   })
 }
 
+/**
+ * 跳转购物车
+ */
+function goToCart() {
+  uni.switchTab({ url: '/pages/cart/cart' })
+}
+
 // ============================================================
 // 第7部分：页面生命周期
 // ============================================================
@@ -489,7 +499,7 @@ onLoad((options: any) => {
       </view>
 
       <!-- 购物车入口 -->
-      <view class="action-icon" @click="uni.switchTab({ url: '/pages/cart/cart' })">
+      <view class="action-icon" @click="goToCart">
         <text class="icon-text">🛒</text>
         <text class="icon-label">购物车</text>
       </view>
