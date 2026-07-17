@@ -1,0 +1,9 @@
+{
+  "name": "seedProducts",
+  "version": "1.0.0",
+  "description": "种子商品数据云函数，用于将示例商品写入数据库",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.7.0"
+  }
+}

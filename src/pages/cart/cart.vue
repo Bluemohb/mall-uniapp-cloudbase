@@ -6,242 +6,45 @@
   - 从本地存储读取购物车数据
   - 商品选中/取消选中、全选/全不选
   - 数量增减（最少1）
-  - 滑动删除/批量删除
+  - 批量删除
   - 实时计算合计金额
   - 空购物车状态
 
   【知识点】
   - uni.getStorageSync / uni.setStorageSync：本地数据持久化
   - computed：响应式计算合计金额
-  - 微信小程序的触摸事件（滑动删除）
+  - watch：监听数据变化自动保存
   ============================================================
 -->
-<script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-
-// ============================================================
-// 第1部分：类型定义
-// ============================================================
-
-/** 购物车单项 */
-interface CartItem {
-  productId: string
-  name: string
-  image: string
-  price: number
-  specs: string
-  quantity: number
-  selected: boolean
-  addTime: number
-}
-
-// ============================================================
-// 第2部分：响应式数据
-// ============================================================
-
-/** 购物车列表 */
-const cartList = ref<CartItem[]>([])
-
-/** 是否编辑模式 */
-const isEditMode = ref(false)
-
-// ============================================================
-// 第3部分：计算属性
-// ============================================================
-
-/** 已选中商品数量 */
-const selectedCount = computed(() =>
-  cartList.value.filter(item => item.selected).reduce((sum, item) => sum + item.quantity, 0),
-)
-
-/** 合计金额（仅计算选中的商品） */
-const totalPrice = computed(() =>
-  cartList.value
-    .filter(item => item.selected)
-    .reduce((sum, item) => sum + item.price * item.quantity, 0),
-)
-
-/** 是否全选 */
-const isAllSelected = computed(() =>
-  cartList.value.length > 0 && cartList.value.every(item => item.selected),
-)
-
-// ============================================================
-// 第4部分：数据加载
-// ============================================================
-
-/**
- * 从本地存储加载购物车数据
- */
-function loadCartData() {
-  try {
-    cartList.value = uni.getStorageSync('cart_list') || []
-  } catch (error) {
-    console.error('加载购物车数据失败:', error)
-    cartList.value = []
-  }
-}
-
-/**
- * 保存购物车数据到本地存储
- */
-function saveCartData() {
-  uni.setStorageSync('cart_list', cartList.value)
-}
-
-// 监听数据变化自动保存
-watch(cartList, () => {
-  saveCartData()
-}, { deep: true })
-
-// ============================================================
-// 第5部分：交互方法
-// ============================================================
-
-/** 切换单个商品的选中状态 */
-function toggleSelect(index: number) {
-  cartList.value[index].selected = !cartList.value[index].selected
-}
-
-/** 全选 / 取消全选 */
-function toggleSelectAll() {
-  const newState = !isAllSelected.value
-  cartList.value.forEach((item) => {
-    item.selected = newState
-  })
-}
-
-/** 修改数量 */
-function changeQty(index: number, delta: number) {
-  const item = cartList.value[index]
-  const newQty = item.quantity + delta
-  if (newQty < 1) return
-  item.quantity = newQty
-}
-
-/** 删除单项 */
-function removeItem(index: number) {
-  uni.showModal({
-    title: '确认删除',
-    content: `确定要删除「${cartList.value[index].name}」吗？`,
-    success: (res) => {
-      if (res.confirm) {
-        cartList.value.splice(index, 1)
-        // 如果全部删完了，退出编辑模式
-        if (cartList.value.length === 0) {
-          isEditMode.value = false
-        }
-      }
-    },
-  })
-}
-
-/** 批量删除选中商品 */
-function batchDelete() {
-  if (selectedCount.value === 0) {
-    uni.showToast({ title: '请先选择商品', icon: 'none' })
-    return
-  }
-
-  uni.showModal({
-    title: '确认删除',
-    content: `确定要删除选中的 ${selectedCount.value} 件商品吗？`,
-    success: (res) => {
-      if (res.confirm) {
-        cartList.value = cartList.value.filter(item => !item.selected)
-        if (cartList.value.length === 0) {
-          isEditMode.value = false
-        }
-      }
-    },
-  })
-}
-
-/** 切换编辑模式 */
-function toggleEditMode() {
-  isEditMode.value = !isEditMode.value
-}
-
-/** 跳转商品详情 */
-function goToDetail(productId: string) {
-  uni.navigateTo({ url: `/pages/product-detail/product-detail?id=${productId}` })
-}
-
-/** 返回上一页 */
-function goBack() {
-  uni.navigateBack()
-}
-
-/** 去逛逛（跳转商品列表） */
-function goShopping() {
-  uni.navigateTo({ url: '/pages/products/products' })
-}
-
-/** 去结算 */
-function goCheckout() {
-  if (selectedCount.value === 0) {
-    uni.showToast({ title: '请先选择商品', icon: 'none' })
-    return
-  }
-
-  // 获取选中的商品
-  const selectedItems = cartList.value.filter(item => item.selected)
-
-  // 保存选中商品信息，供订单页使用
-  uni.setStorageSync('checkout_items', selectedItems)
-
-  // 跳转订单确认页（后续步骤实现）
-  uni.showToast({ title: '订单功能即将上线', icon: 'none' })
-}
-
-// ============================================================
-// 第6部分：生命周期
-// ============================================================
-
-/**
- * onShow: 每次页面显示时重新加载购物车数据
- * 这样从其他页面返回时数据是最新的
- */
-onShow(() => {
-  loadCartData()
-})
-</script>
-
 <template>
   <view class="cart-page">
-    <!-- ========== 顶部导航栏（自定义） ========== -->
-    <view class="cart-header">
-      <view class="header-back" @click="goBack">
-        <text class="back-icon">‹</text>
-      </view>
-      <text class="header-title">购物车</text>
-      <view class="header-action" @click="toggleEditMode">
-        <text>{{ isEditMode ? '完成' : '管理' }}</text>
-      </view>
-    </view>
-
     <!-- ========== 空购物车状态 ========== -->
     <view v-if="cartList.length === 0" class="empty-state">
-      <view class="empty-icon">
-        🛒
-      </view>
+      <view class="empty-icon">🛒</view>
       <text class="empty-text">购物车是空的</text>
       <text class="empty-hint">快去挑选心仪的商品吧</text>
-      <view class="empty-btn" @click="goShopping">
-        去逛逛
-      </view>
+      <view class="empty-btn" @click="goShopping">去逛逛</view>
     </view>
 
     <!-- ========== 购物车列表 ========== -->
     <template v-else>
-      <!-- 购物车商品列表 -->
       <scroll-view class="cart-scroll" scroll-y enhanced :show-scrollbar="false">
+        <!-- 编辑模式切换 -->
+        <view class="edit-bar">
+          <text class="edit-bar-hint" v-if="!isEditMode">
+            共 {{ cartList.length }} 件商品
+          </text>
+          <view class="edit-toggle" @click="isEditMode = !isEditMode">
+            <text :style="{ color: isEditMode ? '#e7493b' : '#667eea' }">
+              {{ isEditMode ? '完成' : '管理' }}
+            </text>
+          </view>
+        </view>
+
         <view
           v-for="(item, index) in cartList"
           :key="item.productId + item.specs"
           class="cart-item"
-          :class="{ 'cart-item-edit': isEditMode }"
         >
           <!-- 选中框 -->
           <view
@@ -255,16 +58,15 @@ onShow(() => {
           <!-- 商品信息 -->
           <view class="item-main" @click="goToDetail(item.productId)">
             <image
-              :src="item.image || '/static/placeholder.png'"
+              :src="item.image || '/static/logo.png'"
               class="item-image"
               mode="aspectFill"
             />
             <view class="item-info">
               <text class="item-name">{{ item.name }}</text>
-              <text v-if="item.specs" class="item-specs">{{ item.specs }}</text>
+              <text class="item-specs" v-if="item.specs">{{ item.specs }}</text>
               <view class="item-bottom">
                 <text class="item-price">¥{{ item.price.toFixed(2) }}</text>
-                <!-- 数量控制 -->
                 <view class="qty-control">
                   <view
                     class="qty-btn"
@@ -292,36 +94,33 @@ onShow(() => {
           </view>
         </view>
 
-        <!-- 底部占位（避免被底部操作栏遮挡） -->
         <view class="bottom-placeholder" />
       </scroll-view>
 
       <!-- ========== 底部结算栏 ========== -->
       <view class="cart-footer">
-        <view class="footer-left">
-          <!-- 全选 -->
-          <view class="check-box" :class="{ checked: isAllSelected }" @click="toggleSelectAll">
+        <view class="footer-left" @click="toggleSelectAll">
+          <view class="check-box" :class="{ checked: isAllSelected }">
             <text v-if="isAllSelected" class="check-icon">✓</text>
           </view>
           <text class="select-all-text">全选</text>
         </view>
 
-        <view v-if="!isEditMode" class="footer-right">
-          <view class="total-info">
+        <view class="footer-right">
+          <view class="total-info" v-if="!isEditMode">
             <text class="total-label">合计：</text>
             <text class="total-price">¥{{ totalPrice.toFixed(2) }}</text>
           </view>
           <view
+            v-if="!isEditMode"
             class="settle-btn"
             :class="{ disabled: selectedCount === 0 }"
             @click="goCheckout"
           >
             结算({{ selectedCount }})
           </view>
-        </view>
-
-        <view v-else class="footer-right">
           <view
+            v-else
             class="batch-delete-btn"
             :class="{ disabled: selectedCount === 0 }"
             @click="batchDelete"
@@ -334,59 +133,154 @@ onShow(() => {
   </view>
 </template>
 
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+
+// ============================================================
+// 类型定义
+// ============================================================
+
+interface CartItem {
+  productId: string
+  name: string
+  image: string
+  price: number
+  specs: string
+  quantity: number
+  selected: boolean
+  addTime: number
+}
+
+// ============================================================
+// 响应式数据
+// ============================================================
+
+const cartList = ref<CartItem[]>([])
+const isEditMode = ref(false)
+
+// ============================================================
+// 计算属性
+// ============================================================
+
+const selectedCount = computed(() =>
+  cartList.value.filter(item => item.selected).reduce((sum, item) => sum + item.quantity, 0)
+)
+
+const totalPrice = computed(() =>
+  cartList.value
+    .filter(item => item.selected)
+    .reduce((sum, item) => sum + item.price * item.quantity, 0)
+)
+
+const isAllSelected = computed(() =>
+  cartList.value.length > 0 && cartList.value.every(item => item.selected)
+)
+
+// ============================================================
+// 数据加载与持久化
+// ============================================================
+
+function loadCartData() {
+  try {
+    const stored = uni.getStorageSync('cart_list')
+    cartList.value = stored || []
+  } catch (error) {
+    console.error('加载购物车数据失败:', error)
+    cartList.value = []
+  }
+}
+
+watch(cartList, () => {
+  uni.setStorageSync('cart_list', cartList.value)
+}, { deep: true })
+
+// ============================================================
+// 交互方法
+// ============================================================
+
+function toggleSelect(index: number) {
+  cartList.value[index].selected = !cartList.value[index].selected
+}
+
+function toggleSelectAll() {
+  const newState = !isAllSelected.value
+  cartList.value.forEach(item => { item.selected = newState })
+}
+
+function changeQty(index: number, delta: number) {
+  const newQty = cartList.value[index].quantity + delta
+  if (newQty < 1) return
+  cartList.value[index].quantity = newQty
+}
+
+function removeItem(index: number) {
+  uni.showModal({
+    title: '确认删除',
+    content: `确定要删除「${cartList.value[index].name}」吗？`,
+    success: (res) => {
+      if (res.confirm) {
+        cartList.value.splice(index, 1)
+        if (cartList.value.length === 0) {
+          isEditMode.value = false
+        }
+      }
+    },
+  })
+}
+
+function batchDelete() {
+  if (selectedCount.value === 0) {
+    uni.showToast({ title: '请先选择商品', icon: 'none' })
+    return
+  }
+  uni.showModal({
+    title: '确认删除',
+    content: `确定要删除选中的 ${selectedCount.value} 件商品吗？`,
+    success: (res) => {
+      if (res.confirm) {
+        cartList.value = cartList.value.filter(item => !item.selected)
+        if (cartList.value.length === 0) {
+          isEditMode.value = false
+        }
+      }
+    },
+  })
+}
+
+function goToDetail(productId: string) {
+  uni.navigateTo({ url: `/pages/product-detail/product-detail?id=${productId}` })
+}
+
+function goShopping() {
+  uni.navigateTo({ url: '/pages/products/products' })
+}
+
+function goCheckout() {
+  if (selectedCount.value === 0) {
+    uni.showToast({ title: '请先选择商品', icon: 'none' })
+    return
+  }
+  const selectedItems = cartList.value.filter(item => item.selected)
+  uni.setStorageSync('checkout_items', selectedItems)
+  uni.showToast({ title: '订单功能即将上线', icon: 'none' })
+}
+
+// ============================================================
+// 生命周期
+// ============================================================
+
+onShow(() => {
+  loadCartData()
+})
+</script>
+
 <style scoped>
-/* ============================================================
-   页面整体布局
-   ============================================================ */
 .cart-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
   background-color: #f5f5f5;
-}
-
-/* ========== 顶部导航 ========== */
-.cart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 30rpx;
-  height: 88rpx;
-  background-color: #fff;
-  border-bottom: 1rpx solid #eee;
-}
-
-.header-back {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-icon {
-  font-size: 50rpx;
-  color: #333;
-  font-weight: 300;
-  line-height: 1;
-}
-
-.header-title {
-  flex: 1;
-  text-align: center;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #333;
-}
-
-.header-action {
-  width: 60rpx;
-  text-align: right;
-}
-
-.header-action {
-  font-size: 28rpx;
-  color: #667eea;
 }
 
 /* ========== 空状态 ========== */
@@ -425,10 +319,30 @@ onShow(() => {
   border-radius: 40rpx;
 }
 
-/* ========== 购物车列表 ========== */
+/* ========== 编辑栏 ========== */
+.edit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 30rpx;
+  background-color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.edit-bar-hint {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.edit-toggle {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+/* ========== 列表 ========== */
 .cart-scroll {
   flex: 1;
-  padding-top: 16rpx;
+  padding-top: 8rpx;
 }
 
 .cart-item {
@@ -438,11 +352,6 @@ onShow(() => {
   margin: 0 24rpx 16rpx;
   background-color: #fff;
   border-radius: 16rpx;
-  transition: transform 0.2s;
-}
-
-.cart-item-edit {
-  /* 编辑模式下的过渡 */
 }
 
 /* ========== 选中框 ========== */
@@ -456,7 +365,6 @@ onShow(() => {
   justify-content: center;
   margin-right: 20rpx;
   flex-shrink: 0;
-  transition: all 0.2s;
 }
 
 .check-box.checked {
@@ -585,10 +493,6 @@ onShow(() => {
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background-color: #fff;
   border-top: 1rpx solid #eee;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
 }
 
 .footer-left {
@@ -623,7 +527,6 @@ onShow(() => {
   color: #e7493b;
 }
 
-/* ========== 结算按钮 ========== */
 .settle-btn {
   padding: 16rpx 40rpx;
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -637,7 +540,6 @@ onShow(() => {
   opacity: 0.5;
 }
 
-/* ========== 批量删除按钮 ========== */
 .batch-delete-btn {
   padding: 16rpx 40rpx;
   background-color: #e7493b;

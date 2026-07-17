@@ -93,6 +93,12 @@ const isRefreshing = ref(false)
 /** 是否正在写入示例数据 */
 const isSeeding = ref(false)
 
+/** 是否正在使用本地备份数据（CloudBase 无数据时自动回退） */
+const isLocalFallback = ref(false)
+
+/** 本地存储键名 */
+const LOCAL_STORAGE_KEY = 'sample_products'
+
 /**
  * 计算属性：是否显示空状态
  * 当不在加载中 且 列表为空时，显示"暂无商品"提示
@@ -231,12 +237,11 @@ const sampleProducts = [
 ]
 
 /**
- * 将示例数据写入 CloudBase 数据库
+ * 将示例数据写入 CloudBase 数据库（带本地回退）
  *
- * 【知识点】CloudBase 写入操作：
- * - collection('集合名').add(数据)  添加单条数据
- * - 也可以批量添加，但这里逐条添加更安全
- * - 集合不存在时，CloudBase 会自动创建
+ * 【知识点】双数据源策略：
+ * - 首选：调用 seedProducts 云函数写入 CloudBase（需先部署云函数）
+ * - 回退：如果云函数未部署/失败，保存到本地存储，页面仍可正常展示
  */
 async function seedSampleData() {
   // 防止重复点击
@@ -246,35 +251,62 @@ async function seedSampleData() {
   uni.showLoading({ title: '正在写入示例数据...' })
 
   try {
-    const db = app.database()
-    const now = Date.now()
-
-    // 逐条写入数据（CloudBase 的 add 方法一次只能添加一条）
-    for (const product of sampleProducts) {
-      await db.collection('products').add({
-        ...product,           // 展开商品数据
-        createTime: now + Math.random() * 1000,  // 加随机偏移，让排序有区分度
-      })
-    }
-
-    uni.hideLoading()
-    uni.showToast({
-      title: '示例数据写入成功！',
-      icon: 'success',
+    // 方式1：尝试调用 seedProducts 云函数（服务端写入，不受权限限制）
+    const res = await app.callFunction({
+      name: 'seedProducts',
+      data: {
+        products: sampleProducts,
+      },
     })
 
-    // 重新加载商品列表
-    await fetchProducts(true)
+    uni.hideLoading()
+
+    if (res.result.success) {
+      uni.showToast({ title: '示例数据写入成功！', icon: 'success' })
+      isLocalFallback.value = false
+      // 清除本地备份（已成功写入云端）
+      try { uni.removeStorageSync(LOCAL_STORAGE_KEY) } catch {}
+      await fetchProducts(true)
+    } else {
+      console.error('云函数返回失败:', res.result)
+      // 云函数返回失败也回退到本地
+      await saveToLocalAndLoad()
+    }
   } catch (error) {
     uni.hideLoading()
-    console.error('写入示例数据失败:', error)
+    console.warn('云函数调用失败，使用本地存储模式:', error.message || error)
+    // 方式2：云函数未部署或调用失败 → 保存到本地存储
+    await saveToLocalAndLoad()
+  } finally {
+    isSeeding.value = false
+  }
+}
+
+/** 保存示例数据到本地存储，并加载显示 */
+async function saveToLocalAndLoad() {
+  try {
+    uni.setStorageSync(LOCAL_STORAGE_KEY, sampleProducts)
+    isLocalFallback.value = true
+
+    // 构造本地数据显示（加 _id 和 createTime）
+    const now = Date.now()
+    productList.value = sampleProducts.map((p, i) => ({
+      ...p,
+      _id: `local_${i}`,
+      createTime: now + i,
+    }))
+
+    uni.showToast({
+      title: '示例数据已就绪（本地模式）',
+      icon: 'success',
+    })
+  } catch (err) {
+    console.error('本地存储写入失败:', err)
     uni.showToast({
       title: '写入失败，请检查数据库权限',
       icon: 'error',
       duration: 3000,
     })
-  } finally {
-    isSeeding.value = false
   }
 }
 
@@ -347,6 +379,23 @@ async function fetchProducts(isRefresh = false) {
     } else {
       // 加载更多模式：追加到现有列表
       productList.value = [...productList.value, ...(res.data as Product[])]
+    }
+
+    // 第4.5步：如果 CloudBase 没有数据且是首次刷新 → 检查本地备份
+    if (productList.value.length === 0 && isRefresh) {
+      try {
+        const localData = uni.getStorageSync(LOCAL_STORAGE_KEY)
+        if (localData && localData.length > 0) {
+          console.log('📦 从本地存储加载商品数据')
+          const now = Date.now()
+          productList.value = localData.map((p: Product, i: number) => ({
+            ...p,
+            _id: `local_${i}`,
+            createTime: now + i,
+          }))
+          isLocalFallback.value = true
+        }
+      } catch {}
     }
 
     // 第5步：判断是否还有更多数据
@@ -457,6 +506,10 @@ function goToCart() {
 -->
 <template>
   <view class="products-page">
+    <!-- 本地模式提示条 -->
+    <view v-if="isLocalFallback && productList.length > 0" class="local-hint">
+      <text class="local-hint-text">📱 当前显示本地示例数据 · 部署云函数后可写入云端</text>
+    </view>
     <!--
       商品卡片网格布局
       使用 flex 布局，每行2列
@@ -552,6 +605,21 @@ function goToCart() {
   padding: 20rpx;
   background-color: #f5f5f5;
   min-height: 100vh;
+}
+
+/* ========== 本地模式提示条 ========== */
+.local-hint {
+  background: #fff3cd;
+  border: 1rpx solid #ffc107;
+  border-radius: 12rpx;
+  padding: 16rpx 24rpx;
+  margin-bottom: 20rpx;
+  text-align: center;
+}
+
+.local-hint-text {
+  font-size: 24rpx;
+  color: #856404;
 }
 
 /* ========== 商品网格 ========== */
