@@ -6,6 +6,13 @@ function goToProducts() {
   })
 }
 
+// 跳转到购物车
+function goToCart() {
+  uni.navigateTo({
+    url: '/pages/cart/cart',
+  })
+}
+
 // 跳转到演示页面
 function goToDemo() {
   uni.navigateTo({
@@ -78,6 +85,10 @@ function openDocs() {
       <!-- 新加：商品列表入口 -->
       <button class="btn btn-primary" @click="goToProducts">
         🛍️ 商品列表
+      </button>
+      <!-- 新加：购物车入口 -->
+      <button class="btn btn-warning" @click="goToCart">
+        🛒 购物车
       </button>
       <button class="btn btn-success" @click="goToDemo">
         体验云开发功能

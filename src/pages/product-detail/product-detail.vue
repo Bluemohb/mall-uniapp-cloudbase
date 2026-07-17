@@ -338,7 +338,7 @@ function buyNow() {
  * 跳转购物车
  */
 function goToCart() {
-  uni.switchTab({ url: '/pages/cart/cart' })
+  uni.navigateTo({ url: '/pages/cart/cart' })
 }
 
 // ============================================================

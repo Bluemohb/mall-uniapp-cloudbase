@@ -439,8 +439,7 @@ function goToDetail(productId: string) {
  * 去购物车页面
  */
 function goToCart() {
-  // 使用 switchTab 跳转到 tabBar 页面
-  uni.switchTab({
+  uni.navigateTo({
     url: '/pages/cart/cart',
   })
 }
