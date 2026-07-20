@@ -20,7 +20,6 @@
     1. 导入依赖
     2. 定义数据类型（TypeScript 接口）
     3. 响应式数据定义
-      3.5 示例数据（学习用）
     4. 数据查询方法
     5. 页面生命周期
     6. 事件处理
@@ -32,7 +31,7 @@
 
 // 从我们的 cloudbase 工具模块引入默认的 app 实例
 // 这个 app 在 src/utils/cloudbase.ts 中已经初始化好了
-import { app, login } from '@/utils/cloudbase'
+import { app } from '@/utils/cloudbase'
 
 // 引入 Vue 3 的响应式 API
 // ref: 包装基本类型为响应式数据
@@ -90,231 +89,11 @@ const hasMore = ref(true)
 /** 是否正在下拉刷新 */
 const isRefreshing = ref(false)
 
-/** 是否正在写入示例数据 */
-const isSeeding = ref(false)
-
-/** 是否正在使用本地备份数据（CloudBase 无数据时自动回退） */
-const isLocalFallback = ref(false)
-
-/** 本地存储键名 */
-const LOCAL_STORAGE_KEY = 'sample_products'
-
 /**
  * 计算属性：是否显示空状态
  * 当不在加载中 且 列表为空时，显示"暂无商品"提示
  */
 const showEmpty = computed(() => !isLoading.value && productList.value.length === 0)
-
-// ============================================================
-// 第3.5部分：示例数据（学习用）
-// ============================================================
-
-/**
- * 示例商品数据
- * 用于快速填充数据库，方便看到效果
- *
- * 【知识点】图片 URL 使用 picsum.photos 占位图片服务
- * 你也可以替换为自己的图片链接
- */
-const sampleProducts = [
-  {
-    name: '清爽纯棉T恤 夏季新款',
-    price: 79,
-    originalPrice: 159,
-    image: 'https://picsum.photos/seed/tshirt/400/400',
-    images: ['https://picsum.photos/seed/tshirt1/750/750', 'https://picsum.photos/seed/tshirt2/750/750', 'https://picsum.photos/seed/tshirt3/750/750'],
-    category: '服装',
-    sales: 1280,
-    stock: 99,
-    rating: 4.8,
-    description: '100%纯棉面料，亲肤透气，夏日必备基础款。',
-    specs: [
-      { name: '颜色', values: [{ label: '白色', value: 'white' }, { label: '黑色', value: 'black' }, { label: '灰色', value: 'gray' }] },
-      { name: '尺码', values: [{ label: 'S', value: 'S' }, { label: 'M', value: 'M' }, { label: 'L', value: 'L' }, { label: 'XL', value: 'XL' }] },
-    ],
-  },
-  {
-    name: '无线蓝牙耳机 Pro',
-    price: 299,
-    originalPrice: 499,
-    image: 'https://picsum.photos/seed/earphone/400/400',
-    images: ['https://picsum.photos/seed/earphone1/750/750', 'https://picsum.photos/seed/earphone2/750/750', 'https://picsum.photos/seed/earphone3/750/750'],
-    category: '数码',
-    sales: 3560,
-    stock: 50,
-    rating: 4.9,
-    description: '主动降噪，30小时续航，Hi-Fi音质。',
-    specs: [
-      { name: '颜色', values: [{ label: '星光白', value: 'white' }, { label: '曜石黑', value: 'black' }, { label: '雾霾蓝', value: 'blue' }] },
-    ],
-  },
-  {
-    name: '北欧风简约台灯',
-    price: 128,
-    originalPrice: 199,
-    image: 'https://picsum.photos/seed/lamp/400/400',
-    images: ['https://picsum.photos/seed/lamp1/750/750', 'https://picsum.photos/seed/lamp2/750/750'],
-    category: '家居',
-    sales: 890,
-    stock: 120,
-    rating: 4.6,
-    description: '三档调光，护眼LED，书房卧室两用。',
-    specs: [
-      { name: '颜色', values: [{ label: '米白色', value: 'white' }, { label: '深灰色', value: 'gray' }] },
-    ],
-  },
-  {
-    name: '大容量双肩包 旅行必备',
-    price: 159,
-    originalPrice: 259,
-    image: 'https://picsum.photos/seed/bag/400/400',
-    images: ['https://picsum.photos/seed/bag1/750/750', 'https://picsum.photos/seed/bag2/750/750', 'https://picsum.photos/seed/bag3/750/750'],
-    category: '配饰',
-    sales: 2100,
-    stock: 75,
-    rating: 4.7,
-    description: '防泼水面料，多隔层设计，可放15.6寸笔记本。',
-    specs: [
-      { name: '颜色', values: [{ label: '经典黑', value: 'black' }, { label: '海军蓝', value: 'navy' }, { label: '卡其色', value: 'khaki' }] },
-    ],
-  },
-  {
-    name: '速干运动短裤 透气跑步',
-    price: 89,
-    image: 'https://picsum.photos/seed/shorts/400/400',
-    images: ['https://picsum.photos/seed/shorts1/750/750', 'https://picsum.photos/seed/shorts2/750/750'],
-    category: '服装',
-    sales: 1680,
-    stock: 200,
-    rating: 4.5,
-    description: '四面弹力面料，速干排汗，运动无束缚。',
-    specs: [
-      { name: '颜色', values: [{ label: '黑色', value: 'black' }, { label: '深灰', value: 'gray' }] },
-      { name: '尺码', values: [{ label: 'M', value: 'M' }, { label: 'L', value: 'L' }, { label: 'XL', value: 'XL' }, { label: '2XL', value: '2XL' }] },
-    ],
-  },
-  {
-    name: '智能手环 心率监测版',
-    price: 199,
-    originalPrice: 329,
-    image: 'https://picsum.photos/seed/watch/400/400',
-    images: ['https://picsum.photos/seed/watch1/750/750', 'https://picsum.photos/seed/watch2/750/750', 'https://picsum.photos/seed/watch3/750/750'],
-    category: '数码',
-    sales: 5420,
-    stock: 30,
-    rating: 4.8,
-    description: '全天候心率监测，血氧检测，14天超长续航。',
-    specs: [
-      { name: '颜色', values: [{ label: '午夜黑', value: 'black' }, { label: '星光银', value: 'silver' }] },
-    ],
-  },
-  {
-    name: '日式陶瓷碗 套装4只',
-    price: 68,
-    image: 'https://picsum.photos/seed/bowl/400/400',
-    images: ['https://picsum.photos/seed/bowl1/750/750', 'https://picsum.photos/seed/bowl2/750/750'],
-    category: '家居',
-    sales: 760,
-    stock: 300,
-    rating: 4.4,
-    description: '釉下彩工艺，安全无毒，微波炉可用。',
-  },
-  {
-    name: '复古圆框墨镜 男女通用',
-    price: 129,
-    originalPrice: 229,
-    image: 'https://picsum.photos/seed/sunglass/400/400',
-    images: ['https://picsum.photos/seed/sunglass1/750/750', 'https://picsum.photos/seed/sunglass2/750/750'],
-    category: '配饰',
-    sales: 980,
-    stock: 85,
-    rating: 4.6,
-    description: '偏光镜片，UV400防护，金属框架轻巧舒适。',
-    specs: [
-      { name: '颜色', values: [{ label: '黑色', value: 'black' }, { label: '茶色', value: 'brown' }, { label: '银色', value: 'silver' }] },
-    ],
-  },
-]
-
-/**
- * 将示例数据写入 CloudBase 数据库（带本地回退）
- *
- * 【知识点】双数据源策略：
- * - 首选：调用 seedProducts 云函数写入 CloudBase（需先部署云函数）
- * - 回退：如果云函数未部署/失败，保存到本地存储，页面仍可正常展示
- */
-async function seedSampleData() {
-  // 防止重复点击
-  if (isSeeding.value) return
-
-  isSeeding.value = true
-  uni.showLoading({ title: '正在写入示例数据...' })
-
-  try {
-    // 确保已登录（云函数调用需要认证）
-    await login()
-    console.log('🔑 匿名登录成功，开始调用云函数...')
-
-    // 方式1：尝试调用 seedProducts 云函数（服务端写入，不受权限限制）
-    const res = await app.callFunction({
-      name: 'seedProducts',
-      data: {
-        products: sampleProducts,
-      },
-    })
-
-    uni.hideLoading()
-    console.log('📬 云函数完整响应:', JSON.stringify(res))
-
-    if (res.result && res.result.success) {
-      uni.showToast({ title: '示例数据写入成功！', icon: 'success' })
-      isLocalFallback.value = false
-      // 清除本地备份（已成功写入云端）
-      try { uni.removeStorageSync(LOCAL_STORAGE_KEY) } catch {}
-      await fetchProducts(true)
-    } else {
-      console.error('云函数返回失败:', res.result)
-      // 云函数返回失败也回退到本地
-      await saveToLocalAndLoad()
-    }
-  } catch (error) {
-    uni.hideLoading()
-    console.warn('云函数调用失败，使用本地存储模式:', error.message || error)
-    console.warn('完整错误信息:', JSON.stringify(error))
-    // 方式2：云函数未部署或调用失败 → 保存到本地存储
-    await saveToLocalAndLoad()
-  } finally {
-    isSeeding.value = false
-  }
-}
-
-/** 保存示例数据到本地存储，并加载显示 */
-async function saveToLocalAndLoad() {
-  try {
-    uni.setStorageSync(LOCAL_STORAGE_KEY, sampleProducts)
-    isLocalFallback.value = true
-
-    // 构造本地数据显示（加 _id 和 createTime）
-    const now = Date.now()
-    productList.value = sampleProducts.map((p, i) => ({
-      ...p,
-      _id: `local_${i}`,
-      createTime: now + i,
-    }))
-
-    uni.showToast({
-      title: '示例数据已就绪（本地模式）',
-      icon: 'success',
-    })
-  } catch (err) {
-    console.error('本地存储写入失败:', err)
-    uni.showToast({
-      title: '写入失败，请检查数据库权限',
-      icon: 'error',
-      duration: 3000,
-    })
-  }
-}
 
 // ============================================================
 // 第4部分：数据查询方法
@@ -385,23 +164,6 @@ async function fetchProducts(isRefresh = false) {
     } else {
       // 加载更多模式：追加到现有列表
       productList.value = [...productList.value, ...(res.data as Product[])]
-    }
-
-    // 第4.5步：如果 CloudBase 没有数据且是首次刷新 → 检查本地备份
-    if (productList.value.length === 0 && isRefresh) {
-      try {
-        const localData = uni.getStorageSync(LOCAL_STORAGE_KEY)
-        if (localData && localData.length > 0) {
-          console.log('📦 从本地存储加载商品数据')
-          const now = Date.now()
-          productList.value = localData.map((p: Product, i: number) => ({
-            ...p,
-            _id: `local_${i}`,
-            createTime: now + i,
-          }))
-          isLocalFallback.value = true
-        }
-      } catch {}
     }
 
     // 第5步：判断是否还有更多数据
@@ -512,10 +274,6 @@ function goToCart() {
 -->
 <template>
   <view class="products-page">
-    <!-- 本地模式提示条 -->
-    <view v-if="isLocalFallback && productList.length > 0" class="local-hint">
-      <text class="local-hint-text">📱 当前显示本地示例数据 · 部署云函数后可写入云端</text>
-    </view>
     <!--
       商品卡片网格布局
       使用 flex 布局，每行2列
@@ -581,19 +339,6 @@ function goToCart() {
       <text class="empty-icon">📦</text>
       <text class="empty-text">暂无商品</text>
       <text class="empty-hint">商品正在快马加鞭上架中~</text>
-
-      <!--
-        【学习用】加载示例数据按钮
-        点击后会将上面定义的 sampleProducts 数组写入 CloudBase 数据库
-        这样你就能立即看到商品列表效果了！
-      -->
-      <button
-        class="seed-btn"
-        :disabled="isSeeding"
-        @click="seedSampleData"
-      >
-        {{ isSeeding ? '正在写入...' : '📥 加载示例商品数据' }}
-      </button>
     </view>
   </view>
 </template>
@@ -611,21 +356,6 @@ function goToCart() {
   padding: 20rpx;
   background-color: #f5f5f5;
   min-height: 100vh;
-}
-
-/* ========== 本地模式提示条 ========== */
-.local-hint {
-  background: #fff3cd;
-  border: 1rpx solid #ffc107;
-  border-radius: 12rpx;
-  padding: 16rpx 24rpx;
-  margin-bottom: 20rpx;
-  text-align: center;
-}
-
-.local-hint-text {
-  font-size: 24rpx;
-  color: #856404;
 }
 
 /* ========== 商品网格 ========== */
@@ -730,20 +460,5 @@ function goToCart() {
 .empty-hint {
   font-size: 26rpx;
   color: #ccc;
-}
-
-/* 示例数据写入按钮 */
-.seed-btn {
-  margin-top: 40rpx;
-  padding: 16rpx 48rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border: none;
-  border-radius: 40rpx;
-  font-size: 28rpx;
-}
-
-.seed-btn[disabled] {
-  opacity: 0.6;
 }
 </style>
