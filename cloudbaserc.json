@@ -1,10 +1,21 @@
 {
-  "envId": "your-env-id",
+  "envId": "dev-d1ge06l2015280c33",
   "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
   "app": {
-    "buildCommand": "npm run build:h5",
-    "outputDir": "dist/build/h5",
-    "deployPath": "/"
-  },
-  "functionRoot": "./cloudfunctions"
+	  "buildCommand": "pnpm run build:h5",
+	  "outputDir": "dist/build/h5",
+	  "deployPath": "/"
+	  },
+  "functionRoot": "./cloudfunctions",
+  "functions": [
+    {
+      "name": "seedProducts",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 15,
+      "envVariables": {
+        "NODE_ENV": "production"
+      }
+    }
+  ]
 }

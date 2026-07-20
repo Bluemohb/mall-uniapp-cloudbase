@@ -32,7 +32,7 @@
 
 // 从我们的 cloudbase 工具模块引入默认的 app 实例
 // 这个 app 在 src/utils/cloudbase.ts 中已经初始化好了
-import { app } from '@/utils/cloudbase'
+import { app, login } from '@/utils/cloudbase'
 
 // 引入 Vue 3 的响应式 API
 // ref: 包装基本类型为响应式数据
@@ -251,6 +251,10 @@ async function seedSampleData() {
   uni.showLoading({ title: '正在写入示例数据...' })
 
   try {
+    // 确保已登录（云函数调用需要认证）
+    await login()
+    console.log('🔑 匿名登录成功，开始调用云函数...')
+
     // 方式1：尝试调用 seedProducts 云函数（服务端写入，不受权限限制）
     const res = await app.callFunction({
       name: 'seedProducts',
@@ -260,8 +264,9 @@ async function seedSampleData() {
     })
 
     uni.hideLoading()
+    console.log('📬 云函数完整响应:', JSON.stringify(res))
 
-    if (res.result.success) {
+    if (res.result && res.result.success) {
       uni.showToast({ title: '示例数据写入成功！', icon: 'success' })
       isLocalFallback.value = false
       // 清除本地备份（已成功写入云端）
@@ -275,6 +280,7 @@ async function seedSampleData() {
   } catch (error) {
     uni.hideLoading()
     console.warn('云函数调用失败，使用本地存储模式:', error.message || error)
+    console.warn('完整错误信息:', JSON.stringify(error))
     // 方式2：云函数未部署或调用失败 → 保存到本地存储
     await saveToLocalAndLoad()
   } finally {
