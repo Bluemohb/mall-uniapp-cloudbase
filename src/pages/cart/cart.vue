@@ -263,7 +263,8 @@ function goCheckout() {
   }
   const selectedItems = cartList.value.filter(item => item.selected)
   uni.setStorageSync('checkout_items', selectedItems)
-  uni.showToast({ title: '订单功能即将上线', icon: 'none' })
+  // 跳转到收货地址选择页
+  uni.navigateTo({ url: '/pages/address/address-list?mode=select' })
 }
 
 // ============================================================

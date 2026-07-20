@@ -34,6 +34,13 @@ function goToProfile() {
   })
 }
 
+// 跳转到收货地址管理
+function goToAddress() {
+  uni.navigateTo({
+    url: '/pages/address/address-list',
+  })
+}
+
 // 打开文档
 function openDocs() {
   // #ifdef H5
@@ -95,6 +102,9 @@ function openDocs() {
       </button>
       <button class="btn btn-info" @click="goToLogin">
         选择登录方式
+      </button>
+      <button class="btn btn-info" @click="goToAddress">
+        📍 收货地址
       </button>
       <button class="btn btn-warning" @click="goToProfile">
         查看用户信息
