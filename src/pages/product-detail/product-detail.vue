@@ -287,8 +287,8 @@ async function addToCart() {
     // 查找购物车中是否已有同商品同规格的项
     const existIndex = cartList.findIndex(
       (item: any) =>
-        item.productId === cartItem.productId &&
-        item.specs === cartItem.specs
+        item.productId === cartItem.productId
+        && item.specs === cartItem.specs
     )
 
     if (existIndex !== -1) {

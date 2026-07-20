@@ -36,6 +36,8 @@ export default uniHelper(
       // 'ts/no-explicit-any': 'off', // 允许 any 类型（模板常用）
       'style/no-tabs': 'off', // 允许 Tab 字符
       'style/no-mixed-spaces-and-tabs': 'off', // 允许空格和 Tab 混合
+      'style/comma-dangle': 'off', // 不检查尾随逗号
+      'style/arrow-parens': 'off', // 允许箭头函数省略括号
       'unused-imports/no-unused-vars': 'off', // 允许未使用的导入变量
       'perfectionist/sort-objects': 'off', // 不强制对象属性排序
       'perfectionist/sort-imports': 'off', // 不强制导入排序
@@ -45,6 +47,12 @@ export default uniHelper(
       'unused-imports/no-unused-imports': 'off', // 允许未使用的导入
       'antfu/if-newline': 'off', // 不强制 if / else 换行格式
       'style/brace-style': 'off', // 不强制大括号换行风格
+      // 'vue/block-order': ['error', { order: ['template', 'script', 'style'] }], // 强制 Vue 文件块顺序为 template -> script -> style
+      'vue/block-order': 'off', // 不强制 Vue 文件块顺序
+      'vue/singleline-html-element-content-newline': 'off', // 允许单行 HTML 元素内容不换行
+      'vue/html-self-closing': 'off', // 允许 HTML 元素自闭合
+      'vue/attribute-hyphenation': 'off', // 允许 HTML 属性不使用连字符
+      'style/max-statements-per-line': 'off', // 允许单行多语句
     },
   },
 )

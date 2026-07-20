@@ -31,7 +31,7 @@
       <scroll-view class="cart-scroll" scroll-y enhanced :show-scrollbar="false">
         <!-- 编辑模式切换 -->
         <view class="edit-bar">
-          <text class="edit-bar-hint" v-if="!isEditMode">
+          <text v-if="!isEditMode" class="edit-bar-hint">
             共 {{ cartList.length }} 件商品
           </text>
           <view class="edit-toggle" @click="isEditMode = !isEditMode">
@@ -64,7 +64,7 @@
             />
             <view class="item-info">
               <text class="item-name">{{ item.name }}</text>
-              <text class="item-specs" v-if="item.specs">{{ item.specs }}</text>
+              <text v-if="item.specs" class="item-specs">{{ item.specs }}</text>
               <view class="item-bottom">
                 <text class="item-price">¥{{ item.price.toFixed(2) }}</text>
                 <view class="qty-control">
@@ -107,7 +107,7 @@
         </view>
 
         <view class="footer-right">
-          <view class="total-info" v-if="!isEditMode">
+          <view v-if="!isEditMode" class="total-info">
             <text class="total-label">合计：</text>
             <text class="total-price">¥{{ totalPrice.toFixed(2) }}</text>
           </view>
@@ -164,17 +164,17 @@ const isEditMode = ref(false)
 // ============================================================
 
 const selectedCount = computed(() =>
-  cartList.value.filter(item => item.selected).reduce((sum, item) => sum + item.quantity, 0)
+  cartList.value.filter(item => item.selected).reduce((sum, item) => sum + item.quantity, 0),
 )
 
 const totalPrice = computed(() =>
   cartList.value
     .filter(item => item.selected)
-    .reduce((sum, item) => sum + item.price * item.quantity, 0)
+    .reduce((sum, item) => sum + item.price * item.quantity, 0),
 )
 
 const isAllSelected = computed(() =>
-  cartList.value.length > 0 && cartList.value.every(item => item.selected)
+  cartList.value.length > 0 && cartList.value.every(item => item.selected),
 )
 
 // ============================================================
@@ -205,7 +205,7 @@ function toggleSelect(index: number) {
 
 function toggleSelectAll() {
   const newState = !isAllSelected.value
-  cartList.value.forEach(item => { item.selected = newState })
+  cartList.value.forEach((item) => { item.selected = newState })
 }
 
 function changeQty(index: number, delta: number) {

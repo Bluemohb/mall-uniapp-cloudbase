@@ -45,8 +45,8 @@
         <picker
           mode="region"
           :value="regionValue"
-          @change="onRegionChange"
           class="region-picker"
+          @change="onRegionChange"
         >
           <view class="picker-display" :class="{ placeholder: !regionLabel }">
             {{ regionLabel || '请选择省市区' }}
@@ -300,10 +300,10 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
       .collection('addresses')
       .where({ userId, isDefault: true })
 
-    const { data: defaults } = await query.get()
+    const { data: defaults } = await query.get()  // 从数据库查询结果中解构取出 data 字段，并重命名为 defaults
     const items = (defaults || []) as any[]
 
-    const updates = items
+    const updates = items // 数组里的每个元素都是 Promise对象
       .filter(item => item._id !== excludeId)
       .map(item =>
         app.database().collection('addresses').doc(item._id).update({
