@@ -151,7 +151,7 @@ onLoad((query: any) => {
 async function getUserId(): Promise<string> {
   await login()
   const { data } = await app.auth.getSession()
-  const uid = data?.session?.uid || ''
+  const uid = data?.session?.user?.id || ''
   return uid
 }
 

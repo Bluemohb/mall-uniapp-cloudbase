@@ -319,7 +319,8 @@ async function addToCart() {
 
 /**
  * 立即购买
- * 加入购物车后直接跳转到结算页
+ * 不走购物车，直接把当前商品（含规格和数量）写入本地存储，
+ * 跳转到订单确认页（第5步实现）
  */
 function buyNow() {
   if (!allSpecsSelected.value) {
@@ -327,11 +328,23 @@ function buyNow() {
     return
   }
 
-  // 先加入购物车
-  addToCart().then(() => {
-    // 跳转到订单确认页（后续步骤实现）
-    uni.showToast({ title: '订单功能即将上线', icon: 'none' })
-  })
+  if (!product.value) return
+
+  // 构造"立即购买"的商品条目（与购物车条目结构一致）
+  const buyNowItem = {
+    productId: product.value._id,
+    name: product.value.name,
+    image: product.value.image,
+    price: product.value.price,
+    specs: selectedSpecsText.value,   // 如 "黑色 / XL"
+    quantity: quantity.value,
+  }
+
+  // 写入本地存储，供订单确认页读取
+  uni.setStorageSync('buy_now_item', [buyNowItem])
+
+  // 跳转订单确认页（from=buynow 表示来自立即购买）
+  uni.navigateTo({ url: '/pages/order/order-confirm?from=buynow' })
 }
 
 /**

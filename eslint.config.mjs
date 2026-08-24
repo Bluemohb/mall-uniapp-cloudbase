@@ -53,6 +53,7 @@ export default uniHelper(
       'vue/html-self-closing': 'off', // 允许 HTML 元素自闭合
       'vue/attribute-hyphenation': 'off', // 允许 HTML 属性不使用连字符
       'style/max-statements-per-line': 'off', // 允许单行多语句
+      'import/consistent-type-specifier-style': 'off', // 允许类型导入不使用 type
     },
   },
 )

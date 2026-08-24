@@ -153,7 +153,7 @@ async function getUserId(): Promise<string> {
   await login()
   const { data } = await app.auth.getSession()
   // 安全提取 uid
-  const uid = data?.session?.uid || ''
+  const uid = data?.session?.user?.id || ''
   return uid
 }
 
@@ -172,7 +172,7 @@ async function fetchAddresses() {
       .collection('addresses')
       .where({ userId: uid })
       .orderBy('isDefault', 'desc')
-      .orderBy('updatedAt', 'desc')
+      // .orderBy('updatedAt', 'desc')
       .get()
 
     addressList.value = (data as Address[]) || []

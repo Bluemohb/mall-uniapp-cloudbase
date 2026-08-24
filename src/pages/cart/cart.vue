@@ -261,10 +261,11 @@ function goCheckout() {
     uni.showToast({ title: '请先选择商品', icon: 'none' })
     return
   }
+  // 将选中的商品写入本地存储，供订单确认页读取
   const selectedItems = cartList.value.filter(item => item.selected)
   uni.setStorageSync('checkout_items', selectedItems)
-  // 跳转到收货地址选择页
-  uni.navigateTo({ url: '/pages/address/address-list?mode=select' })
+  // 跳转到订单确认页（第5步：from=cart 表示来自购物车结算）
+  uni.navigateTo({ url: '/pages/order/order-confirm?from=cart' })
 }
 
 // ============================================================
