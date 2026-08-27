@@ -88,8 +88,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { app, login } from '@/utils/cloudbase'
 
 // ============================================================
@@ -114,10 +114,6 @@ interface Address {
 // 页面参数
 // ============================================================
 
-interface PageQuery {
-  mode?: string  // 'select' | 'manage'（默认管理）
-}
-
 // ============================================================
 // 响应式数据
 // ============================================================
@@ -131,12 +127,9 @@ const mode = ref<'manage' | 'select'>('manage')
 // 初始化
 // ============================================================
 
-onMounted(() => {
+onLoad((query) => {
   // 读取页面参数，判断是否为选择模式
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1] as any
-  const query = (currentPage?.$page?.options || {}) as PageQuery
-  if (query.mode === 'select') {
+  if (query?.mode === 'select') {
     mode.value = 'select'
   }
 })
@@ -172,7 +165,7 @@ async function fetchAddresses() {
       .collection('addresses')
       .where({ userId: uid })
       .orderBy('isDefault', 'desc')
-      // .orderBy('updatedAt', 'desc')
+      .orderBy('updatedAt', 'desc')
       .get()
 
     addressList.value = (data as Address[]) || []

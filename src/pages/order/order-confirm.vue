@@ -158,9 +158,9 @@ onLoad((options: any) => {
  * 因为用户可能点击"选择地址"跳转，选完返回本页，
  * onLoad 不会再次触发，但 onShow 会！所以要在这里读地址。
  */
-onShow(() => {
+onShow(async () => {
   loadItems()
-  loadAddress()
+  await loadAddress()
 })
 
 // ============================================================
@@ -178,9 +178,62 @@ function loadItems() {
   items.value = uni.getStorageSync(key) || []
 }
 
-/** 读取已选中的收货地址（address-list 选择模式下写入） */
-function loadAddress() {
-  selectedAddress.value = uni.getStorageSync('selected_address') || null
+/**
+ * 读取收货地址，优先级：
+ * 1. 订单页刚选中的地址
+ * 2. 本地缓存里的默认地址
+ * 3. 数据库默认地址
+ * 4. 没有地址时展示空态
+ */
+async function loadAddress() {
+  const selected = uni.getStorageSync('selected_address')
+  if (selected) {
+    selectedAddress.value = selected
+    return
+  }
+
+  const cachedDefault = uni.getStorageSync('default_address')
+  if (cachedDefault) {
+    selectedAddress.value = cachedDefault
+    return
+  }
+
+  try {
+    const uid = await getUserId()
+    if (!uid) {
+      selectedAddress.value = null
+      return
+    }
+
+    const { data } = await app
+      .database()
+      .collection('addresses')
+      .where({
+        userId: uid,
+        isDefault: true,
+      })
+      .limit(1)
+      .get()
+
+    const item = data?.[0]
+    if (!item) {
+      selectedAddress.value = null
+      return
+    }
+
+    const defaultAddress = {
+      _id: item._id,
+      name: item.name,
+      phone: item.phone,
+      fullAddress: `${item.province}${item.city}${item.district} ${item.detail}`,
+    }
+
+    uni.setStorageSync('default_address', defaultAddress)
+    selectedAddress.value = defaultAddress
+  } catch (error) {
+    console.error('加载默认地址失败:', error)
+    selectedAddress.value = null
+  }
 }
 
 // ============================================================
@@ -275,6 +328,10 @@ async function submitOrder() {
     }
     // 删除"立即购买"的临时数据
     uni.removeStorageSync('buy_now_item')
+    // 删除"购物车结算"的临时数据
+    uni.removeStorageSync('checkout_items')
+    // 删除"已选地址"的临时数据
+    uni.removeStorageSync('selected_address')
 
     uni.hideLoading()
     uni.showToast({ title: '订单提交成功', icon: 'success' })
