@@ -86,23 +86,59 @@ export function isMpWeixin(): boolean {
  * - 其他端（H5 / App / 其他小程序）：匿名登录兜底 —— 多端通用，
  *   后续用户可通过 linkIdentity / 绑定手机号等方式"转正"（uid 不变，数据自动继承）。
  */
+/**
+ * 执行登录并二次确认会话已建立
+ * （SDK 的 signInWithOpenId / signInAnonymously 失败时都不抛异常，
+ *   而是返回 { data, error }，必须显式检查返回值，否则会"假成功"）
+ */
 export async function login() {
   try {
     if (isMpWeixin()) {
       try {
         // 微信端：OpenID 静默登录（主登录）
-        await auth.signInWithOpenId({ useWxCloud: false })
+        console.log('[登录] 微信端：尝试 OpenID 静默登录（useWxCloud: false）')
+        const res: any = await auth.signInWithOpenId({ useWxCloud: false })
+        console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || res)
+        if (res?.error) {
+          throw res.error
+        }
+
+        // 二次确认：会话真的建立（有 user.id 且不是 accessKey 匿名态）
+        const check: any = await auth.getSession()
+        const session = check?.data?.session
+        if (!session || !session.user?.id || session.scope === 'accessKey') {
+          throw new Error(`openid 登录未建立有效会话（scope: ${session?.scope || 'none'}）`)
+        }
+
         console.log('✅ 微信 OpenID 静默登录成功（身份稳定）')
       }
-      catch (e) {
+      catch (e: any) {
         // 回退：匿名登录兜底（身份不稳定，仅保证可用）
-        console.warn('OpenID 登录失败，回退匿名登录:', e)
-        await auth.signInAnonymously()
+        console.warn('OpenID 登录失败，回退匿名登录:', e?.message || e)
+        const anonRes: any = await auth.signInAnonymously()
+        // ⚠️ 匿名登录同样可能"假成功"（失败时返回 { data, error } 而非抛异常）
+        if (anonRes?.error) {
+          throw anonRes.error
+        }
+        const check2: any = await auth.getSession()
+        const s2 = check2?.data?.session
+        if (!s2 || !s2.user?.id) {
+          throw new Error('匿名登录兜底也未建立有效会话')
+        }
+        console.log('🟡 已回退为匿名登录（游客身份）')
       }
     }
     else {
       // 非微信端：匿名登录兜底（多端通用）
-      await auth.signInAnonymously()
+      const anonRes: any = await auth.signInAnonymously()
+      if (anonRes?.error) {
+        throw anonRes.error
+      }
+      const check2: any = await auth.getSession()
+      if (!check2?.data?.session?.user?.id) {
+        throw new Error('匿名登录未建立有效会话')
+      }
+      console.log('🟢 非微信端：匿名登录成功')
     }
   }
   catch (error) {

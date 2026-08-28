@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { auth, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
+import { auth, ensureLogin, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
 
 const userInfo = ref<any>(null)
 const session = ref<any>(null)
@@ -39,6 +39,12 @@ const hasBoundWechat = computed(() => {
 async function getUserInfo() {
   try {
     isWeixin.value = isMpWeixin()
+
+    // 先确保已登录：App 启动时的自动登录是异步的，真机网络较慢时
+    // 页面可能先于登录完成读取会话，导致误判为"未登录"。
+    // 这里主动兜底：已有会话直接通过，无会话则触发登录（openid → 匿名兜底）。
+    await ensureLogin()
+
     const { data } = await auth.getSession()
 
     if (data && data.session) {
@@ -49,14 +55,21 @@ async function getUserInfo() {
       console.log('完整用户信息loginState.user:', data.session.user)
 
       // 查询已绑定的身份源（微信 / 手机号 / 邮箱等）
-      try {
-        const res = await getUserIdentities()
-        identities.value = res?.identities || []
-        console.log('已绑定身份源:', identities.value)
-      }
-      catch (e) {
-        console.warn('查询身份源失败:', e)
+      // 注意：匿名会话 scope 为 anonymous，无权调用 getUserIdentities（会报
+      // "user scope want [ user ], but got [ anonymous ]"），匿名用户直接跳过。
+      if (isAnonymous.value) {
         identities.value = []
+      }
+      else {
+        try {
+          const res = await getUserIdentities()
+          identities.value = res?.identities || []
+          console.log('已绑定身份源:', identities.value)
+        }
+        catch (e) {
+          console.warn('查询身份源失败:', e)
+          identities.value = []
+        }
       }
     }
     else {
@@ -278,11 +291,11 @@ onMounted(() => {
         </view>
         <view class="info-item">
           <text class="label">创建时间:</text>
-          <text class="value">{{ formatDate(userInfo.created_at) }}</text>
+          <text class="value">{{ isAnonymous ? '绑定正式身份后可见' : formatDate(userInfo.created_at) }}</text>
         </view>
         <view class="info-item">
           <text class="label">最后登录:</text>
-          <text class="value">{{ formatDate(userInfo.last_sign_in_at) }}</text>
+          <text class="value">{{ isAnonymous ? '绑定正式身份后可见' : formatDate(userInfo.last_sign_in_at) }}</text>
         </view>
 
         <button class="logout-btn" @click="handleLogout">
