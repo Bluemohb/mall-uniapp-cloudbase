@@ -64,20 +64,128 @@ export function checkEnvironment() {
 }
 
 /**
- * 执行登录
- * @returns {Promise} 登录状态
+ * 判断当前是否微信小程序环境（运行时判断，多端通用）
+ */
+export function isMpWeixin(): boolean {
+  try {
+    const info = uni.getSystemInfoSync()
+    return info?.uniPlatform === 'mp-weixin' || info?.platform === 'devtools'
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * 执行登录（多端统一入口，主 openid + 匿名兜底）
+ *
+ * 【方案说明】
+ * - 微信小程序：优先 OpenID 静默登录 —— uid 与微信账号绑定、永久稳定，
+ *   清缓存/换设备后重新登录仍是同一用户，订单、地址不会"消失"。
+ *   OpenID 登录失败（如未配置）时回退匿名登录，保证可用。
+ * - 其他端（H5 / App / 其他小程序）：匿名登录兜底 —— 多端通用，
+ *   后续用户可通过 linkIdentity / 绑定手机号等方式"转正"（uid 不变，数据自动继承）。
  */
 export async function login() {
   try {
-    // 默认采用匿名登录
-    await auth.signInAnonymously()
-    // 也可以换成跳转SDK 内置的登录页面，支持账号密码登录/手机号登录/微信登录,目前只支持 web 端，小程序等其他平台请自行实现登录逻辑
-    // await auth.toDefaultLoginPage()
+    if (isMpWeixin()) {
+      try {
+        // 微信端：OpenID 静默登录（主登录）
+        await auth.signInWithOpenId({ useWxCloud: false })
+        console.log('✅ 微信 OpenID 静默登录成功（身份稳定）')
+      }
+      catch (e) {
+        // 回退：匿名登录兜底（身份不稳定，仅保证可用）
+        console.warn('OpenID 登录失败，回退匿名登录:', e)
+        await auth.signInAnonymously()
+      }
+    }
+    else {
+      // 非微信端：匿名登录兜底（多端通用）
+      await auth.signInAnonymously()
+    }
   }
   catch (error) {
     console.error('登录失败:', error)
     throw error
   }
+}
+
+/**
+ * 确保已登录：有会话直接返回 true；无会话时自动登录（微信 openid / 其他端匿名）
+ * 建议在 App 启动时调用，实现"无感登录"
+ */
+export async function ensureLogin(): Promise<boolean> {
+  try {
+    const { data } = await auth.getSession()
+    if (data.session) {
+      return true
+    }
+    await login()
+    return true
+  }
+  catch (error) {
+    console.error('自动登录失败:', error)
+    return false
+  }
+}
+
+/**
+ * 获取当前用户 ID；无登录态时自动登录（微信 openid / 其他端匿名）
+ */
+export async function getUid(): Promise<string> {
+  const { data } = await auth.getSession()
+  let uid = data?.session?.user?.id || ''
+
+  if (!uid) {
+    await login()
+    const res = await auth.getSession()
+    uid = res.data?.session?.user?.id || ''
+  }
+  return uid
+}
+
+/**
+ * 判断当前会话是否为匿名用户（游客身份）
+ */
+export async function isAnonymousUser(): Promise<boolean> {
+  try {
+    const { data } = await auth.getSession()
+    return !!data?.session?.user?.is_anonymous
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * 查询当前账号已绑定的身份源列表（如微信、手机号等）
+ * @returns 返回 { identities: Array<{ provider, provider_user_id, created_at, ... }> }
+ */
+export async function getUserIdentities(): Promise<any> {
+  const { data, error } = await auth.getUserIdentities()
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+/**
+ * 绑定第三方 OAuth 身份源到当前账号（匿名转正 / 追加登录方式）
+ *
+ * 【重要说明】
+ * - 仅 Web / H5 端可用：会跳转第三方授权页（微信扫码 / Google / GitHub 等）
+ * - 微信小程序端不支持 OAuth 跳转，请使用 signInWithOpenId / signInWithPhoneAuth
+ * - 绑定成功后当前 uid 不变，匿名期间的数据自动归属到正式账号（零迁移）
+ *
+ * @param provider 身份源标识，如 'wechat' | 'google' | 'github' 等
+ */
+export async function linkIdentityWithProvider(provider: string) {
+  const { data, error } = await auth.linkIdentity({ provider } as any)
+  if (error) {
+    throw error
+  }
+  return data
 }
 
 /**
@@ -278,6 +386,12 @@ export default {
   checkEnvironment,
   isValidEnvId,
   initCloudBase,
+  isMpWeixin,
+  ensureLogin,
+  getUid,
+  isAnonymousUser,
+  getUserIdentities,
+  linkIdentityWithProvider,
   signInWithOtp,
   signInWithPassword,
   signInWithPhoneAuth,

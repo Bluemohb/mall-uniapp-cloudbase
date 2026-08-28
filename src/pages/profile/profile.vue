@@ -1,24 +1,69 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { auth, logout } from '../../utils/cloudbase'
+import { computed, onMounted, ref } from 'vue'
+import { auth, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
 
 const userInfo = ref<any>(null)
 const session = ref<any>(null)
+const isAnonymous = ref(false)
+const identities = ref<any[]>([])
+const isWeixin = ref(false)
+
+/** 身份徽章文案 */
+const identityLabel = computed(() => {
+  if (isAnonymous.value)
+    return '匿名用户'
+  const providers = identities.value.map((i: any) => i.provider)
+  if (providers.includes('wechat') || providers.includes('openid'))
+    return '微信用户'
+  if (providers.includes('phone') || userInfo.value?.phone)
+    return '手机号用户'
+  if (userInfo.value?.email)
+    return '邮箱用户'
+  return '正式用户'
+})
+
+/** 是否已绑定手机号 */
+const hasBoundPhone = computed(() => {
+  if (userInfo.value?.phone)
+    return true
+  return identities.value.some((i: any) => i.provider === 'phone')
+})
+
+/** 是否已绑定微信（openid 登录本身即微信身份） */
+const hasBoundWechat = computed(() => {
+  const providers = identities.value.map((i: any) => i.provider)
+  return providers.includes('wechat') || providers.includes('openid')
+})
 
 // 获取用户信息
 async function getUserInfo() {
   try {
+    isWeixin.value = isMpWeixin()
     const { data } = await auth.getSession()
 
     if (data && data.session) {
       session.value = data.session
       userInfo.value = data.session.user
+      isAnonymous.value = !!data.session.user?.is_anonymous
       console.log('用户登录状态loginState:', data.session)
       console.log('完整用户信息loginState.user:', data.session.user)
+
+      // 查询已绑定的身份源（微信 / 手机号 / 邮箱等）
+      try {
+        const res = await getUserIdentities()
+        identities.value = res?.identities || []
+        console.log('已绑定身份源:', identities.value)
+      }
+      catch (e) {
+        console.warn('查询身份源失败:', e)
+        identities.value = []
+      }
     }
     else {
       session.value = null
       userInfo.value = null
+      isAnonymous.value = false
+      identities.value = []
       console.log('用户未登录')
     }
   }
@@ -26,6 +71,7 @@ async function getUserInfo() {
     console.error('获取用户信息失败:', error)
     session.value = null
     userInfo.value = null
+    isAnonymous.value = false
   }
 }
 
@@ -144,6 +190,30 @@ function goToLogin() {
   })
 }
 
+// 匿名用户：跳登录页绑定手机号/微信（uid 不变，数据自动继承）
+function goBindIdentity() {
+  uni.navigateTo({
+    url: '/pages/login/index',
+  })
+}
+
+// 非微信端（H5/Web）：OAuth 绑定微信账号到当前账号（匿名转正，uid 不变）
+async function bindWechat() {
+  uni.showLoading({ title: '跳转微信授权...' })
+  try {
+    await linkIdentityWithProvider('wechat')
+    // OAuth 跳转后由 SDK 自动处理回调，绑定结果通过 onAuthStateChange 事件通知
+    uni.hideLoading()
+  }
+  catch (error: any) {
+    uni.hideLoading()
+    uni.showToast({
+      title: error.message || '绑定失败，请重试',
+      icon: 'none',
+    })
+  }
+}
+
 onMounted(() => {
   getUserInfo()
 })
@@ -157,6 +227,35 @@ onMounted(() => {
 
     <view class="profile-content">
       <view v-if="userInfo" class="user-info">
+        <!-- 身份徽章 -->
+        <view class="identity-badge" :class="{ anon: isAnonymous }">
+          {{ identityLabel }}
+        </view>
+
+        <!-- 匿名用户：引导绑定正式身份（uid 不变，数据自动继承） -->
+        <view v-if="isAnonymous" class="bind-card">
+          <text class="bind-title">当前为游客身份</text>
+          <text class="bind-desc">绑定手机号 / 微信后，订单、地址将永久保留，换设备也不丢失</text>
+          <button class="bind-btn" @click="goBindIdentity">
+            立即绑定（保留当前数据）
+          </button>
+        </view>
+
+        <!-- 微信正式用户：提示身份稳定 -->
+        <view v-else-if="identityLabel === '微信用户'" class="bind-card stable">
+          <text class="bind-title">✅ 已通过微信登录</text>
+          <text class="bind-desc">账号与微信绑定，身份稳定，清缓存 / 换设备均不会丢失订单数据</text>
+        </view>
+
+        <!-- 非微信端（H5/App）：未绑定微信时提供 OAuth 绑定（匿名转正） -->
+        <view v-else-if="!isWeixin && !hasBoundWechat" class="bind-card">
+          <text class="bind-title">绑定微信账号</text>
+          <text class="bind-desc">绑定后可用微信登录，当前数据自动保留</text>
+          <button class="bind-btn" @click="bindWechat">
+            绑定微信
+          </button>
+        </view>
+
         <view class="info-item">
           <text class="label">用户ID:</text>
           <text class="value">{{ userInfo.id || '未知' }}</text>
@@ -230,6 +329,66 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+}
+
+/* ========== 身份徽章 ========== */
+.identity-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 10rpx 24rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.identity-badge.anon {
+  background: #999;
+}
+
+/* ========== 绑定引导卡片 ========== */
+.bind-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 28rpx;
+  margin-top: 10rpx;
+  border-radius: 16rpx;
+  background: #fff7e6;
+  border: 2rpx solid #ffd591;
+}
+
+.bind-card.stable {
+  background: #f6ffed;
+  border-color: #b7eb8f;
+}
+
+.bind-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.bind-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.bind-btn {
+  margin-top: 12rpx;
+  padding: 0 30rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 28rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  border-radius: 36rpx;
+}
+
+.bind-btn:active {
+  opacity: 0.85;
 }
 
 .info-item {

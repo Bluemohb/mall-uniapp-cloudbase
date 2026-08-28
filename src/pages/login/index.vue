@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { login, signInWithOpenId, signInWithPhoneAuth } from '../../utils/cloudbase'
+import { isMpWeixin, login, signInWithOpenId, signInWithPhoneAuth } from '../../utils/cloudbase'
 
-// 匿名登录
+// 匿名登录（多端游客模式）
+// - 微信端：App 启动已自动 OpenID 登录，无需再游客登录（避免换号丢数据）
+// - 其他端（H5/App）：匿名登录兜底，后续可通过"绑定手机号/微信"转正（uid 不变）
 async function anonymousLogin() {
+  if (isMpWeixin()) {
+    uni.showToast({
+      title: '微信端已自动登录，无需游客登录',
+      icon: 'none',
+    })
+    return
+  }
+
   try {
     uni.showLoading({
       title: '登录中...',
@@ -133,28 +143,17 @@ function emailLogin() {
     </view>
 
     <view class="login-options">
-      <!-- 匿名登录 -->
-      <view class="login-option" @click="anonymousLogin">
-        <view class="option-icon">
-          👤
-        </view>
-        <view class="option-content">
-          <text class="option-title">确认登录（默认匿名登录）</text>
-          <text class="option-desc">无需注册，快速体验</text>
-        </view>
-        <view class="option-arrow">
-          >
-        </view>
-      </view>
-
-      <!-- 微信 OpenID 登录 -->
-      <view class="login-option" @click="openIdLogin">
+      <!-- 微信 OpenID 登录（主推） -->
+      <view class="login-option recommended" @click="openIdLogin">
         <view class="option-icon">
           💬
         </view>
         <view class="option-content">
-          <text class="option-title">微信小程序 openId 静默登录</text>
-          <text class="option-desc">使用微信 OpenID 静默登录</text>
+          <view class="option-title-row">
+            <text class="option-title">微信一键登录</text>
+            <text class="option-tag">推荐</text>
+          </view>
+          <text class="option-desc">身份与微信绑定、永久稳定，清缓存/换设备不丢订单</text>
         </view>
         <view class="option-arrow">
           >
@@ -171,13 +170,27 @@ function emailLogin() {
           📞
         </view>
         <view class="option-content">
-          <text class="option-title">微信小程序手机号授权登录</text>
-          <text class="option-desc">推荐未注册用户使用</text>
+          <text class="option-title">微信手机号授权登录</text>
+          <text class="option-desc">绑定手机号，换设备也可找回订单</text>
         </view>
         <view class="option-arrow">
           >
         </view>
       </button>
+
+      <!-- 游客模式（非微信端匿名兜底） -->
+      <view class="login-option" @click="anonymousLogin">
+        <view class="option-icon">
+          👤
+        </view>
+        <view class="option-content">
+          <text class="option-title">游客模式（匿名体验）</text>
+          <text class="option-desc">无需注册，快速体验（微信端已自动登录）</text>
+        </view>
+        <view class="option-arrow">
+          >
+        </view>
+      </view>
 
       <!-- 手机验证码登录 -->
       <view class="login-option" @click="phoneLogin">
@@ -319,10 +332,28 @@ function emailLogin() {
   gap: 8rpx;
 }
 
+.option-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
 .option-title {
   font-size: 32rpx;
   font-weight: bold;
   color: #333;
+}
+
+.option-tag {
+  padding: 2rpx 14rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+}
+
+.login-option.recommended {
+  background: #f7f9ff;
 }
 
 .option-desc {

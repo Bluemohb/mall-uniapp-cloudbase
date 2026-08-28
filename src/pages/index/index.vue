@@ -62,127 +62,37 @@ function openDocs() {
 </script>
 
 <template>
-  <view class="container">
-    <view class="header">
-      <text class="title">CloudBase UniApp 模板</text>
-      <text class="subtitle">基于云开发的跨平台应用模板</text>
-    </view>
-
-    <view class="features">
-      <view class="feature-card">
-        <text class="feature-icon">🚀</text>
-        <text class="feature-title">多端支持</text>
-        <text class="feature-desc">一套代码，多端运行</text>
-      </view>
-
-      <view class="feature-card">
-        <text class="feature-icon">⚡</text>
-        <text class="feature-title">云开发集成</text>
-        <text class="feature-desc">内置云函数、数据库、存储</text>
-      </view>
-
-      <view class="feature-card">
-        <text class="feature-icon">🔧</text>
-        <text class="feature-title">开箱即用</text>
-        <text class="feature-desc">完整的开发工具链</text>
-      </view>
-    </view>
-
-    <view class="actions">
-      <!-- 新加：商品列表入口 -->
-      <button class="btn btn-primary" @click="goToProducts">
-        🛍️ 商品列表
-      </button>
-      <!-- 新加：购物车入口 -->
-      <button class="btn btn-warning" @click="goToCart">
-        🛒 购物车
-      </button>
-      <button class="btn btn-success" @click="goToDemo">
-        体验云开发功能
-      </button>
-      <button class="btn btn-info" @click="goToLogin">
-        选择登录方式
-      </button>
-      <button class="btn btn-info" @click="goToAddress">
-        📍 收货地址
-      </button>
-      <button class="btn btn-warning" @click="goToProfile">
-        查看用户信息
-      </button>
-      <button class="btn btn-secondary" @click="openDocs">
-        查看文档
-      </button>
-    </view>
-
-    <view class="footer">
-      <image class="logo" src="https://7463-tcb-advanced-a656fc-1257967285.tcb.qcloud.la/mcp/powered-by-cloudbase-badge.svg" mode="widthFix" />
-    </view>
+  <view class="actions">
+    <!-- 新加：商品列表入口 -->
+    <button class="btn btn-primary" @click="goToProducts">
+      🛍️ 商品列表
+    </button>
+    <!-- 新加：购物车入口 -->
+    <button class="btn btn-warning" @click="goToCart">
+      🛒 购物车
+    </button>
+    <button class="btn btn-success" @click="goToDemo">
+      体验云开发功能
+    </button>
+    <button class="btn btn-info" @click="goToLogin">
+      选择登录方式
+    </button>
+    <button class="btn btn-info" @click="goToAddress">
+      📍 收货地址
+    </button>
+    <button class="btn btn-warning" @click="goToProfile">
+      查看用户信息
+    </button>
+    <button class="btn btn-secondary" @click="openDocs">
+      查看文档
+    </button>
+  </view>
+  <view class="footer">
+    <image class="logo" src="https://7463-tcb-advanced-a656fc-1257967285.tcb.qcloud.la/mcp/powered-by-cloudbase-badge.svg" mode="widthFix" />
   </view>
 </template>
 
 <style scoped>
-.container {
-  padding: 40rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: 60rpx;
-}
-
-.title {
-  font-size: 48rpx;
-  font-weight: bold;
-  color: white;
-  display: block;
-  margin-bottom: 10rpx;
-}
-
-.subtitle {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.8);
-  display: block;
-}
-
-.features {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-  margin-bottom: 60rpx;
-}
-
-.feature-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10rpx);
-  border-radius: 20rpx;
-  padding: 30rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.2);
-}
-
-.feature-icon {
-  font-size: 48rpx;
-  display: block;
-  margin-bottom: 15rpx;
-}
-
-.feature-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: white;
-  display: block;
-  margin-bottom: 10rpx;
-}
-
-.feature-desc {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.4;
-}
-
 .actions {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
-import { checkEnvironment, initCloudBase } from './utils/cloudbase'
+import { checkEnvironment, ensureLogin, initCloudBase } from './utils/cloudbase'
 
 onLaunch(async () => {
   console.log('App Launch')
@@ -8,13 +8,23 @@ onLaunch(async () => {
   // 检查云开发环境配置
   if (checkEnvironment()) {
     try {
-      // 初始化云开发
+      // 初始化云开发（检查登录态）
       const success = await initCloudBase()
       if (success) {
         console.log('云开发初始化成功')
       }
       else {
-        console.warn('云开发初始化失败')
+        console.warn('云开发初始化失败，尝试自动登录...')
+      }
+
+      // 无登录态时自动登录：微信端 openid 静默登录 / 其他端匿名兜底
+      // 确保用户身份稳定，清缓存后重新登录仍是同一用户，数据不丢失
+      const logged = await ensureLogin()
+      if (logged) {
+        console.log('自动登录成功（微信 OpenID / 匿名兜底）')
+      }
+      else {
+        console.warn('自动登录失败，将在访问需登录的功能时重试')
       }
     }
     catch (error) {
