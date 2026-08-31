@@ -68,8 +68,13 @@ export function checkEnvironment() {
  */
 export function isMpWeixin(): boolean {
   try {
-    const info = uni.getSystemInfoSync()
-    return info?.uniPlatform === 'mp-weixin' || info?.platform === 'devtools'
+    const u = uni as any
+    // uni.getSystemInfoSync 已被官方标记废弃，优先使用拆分后的新 API
+    const info = u.getAppBaseInfo?.() || u.getDeviceInfo?.()
+    if (info?.uniPlatform)
+      return info.uniPlatform === 'mp-weixin'
+    // 低版本 uni-app 兜底
+    return u.getSystemInfoSync?.()?.uniPlatform === 'mp-weixin'
   }
   catch {
     return false

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onShow, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { auth, ensureLogin, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
 
 const userInfo = ref<any>(null)
@@ -9,21 +10,39 @@ const identities = ref<any[]>([])
 const isWeixin = ref(false)
 
 /**
- * 判断某个身份源是否为微信（OpenID 登录）
- * 不同环境返回的 provider 可能是 wechat / wx_openid / openid / wx.cloud...，做宽松匹配
+ * 微信小程序的 AppID 格式：wx + 16 位十六进制（如 wxcf60813f02eccf5c）
+ * 本环境 SDK 返回的身份源形如 { id: 'wxcf60813f02eccf5c', name: '...', bind: true }，
+ * 并没有 provider 字段，所以这里直接用 id / name 的形状来判断。
  */
-function isWechatProvider(provider: any) {
-  const p = String(provider || '').toLowerCase()
-  return p.includes('wechat') || p.includes('wx') || p.includes('openid')
+const WX_APPID_RE = /^wx[0-9a-f]{16}$/i
+
+/** 取身份源上所有可能带类型信息的字段值 */
+function identityValues(item: any): string[] {
+  return [item?.provider, item?.id, item?.name, item?.provider_name]
+    .map(v => String(v ?? '').trim())
+    .filter(Boolean)
+}
+
+/** 判断某个身份源是否为微信（OpenID 登录 / AppID 形态） */
+function isWechatIdentity(item: any) {
+  return identityValues(item).some((v) => {
+    const s = v.toLowerCase()
+    return WX_APPID_RE.test(s) || s === 'wx' || s.includes('wechat') || s.includes('openid')
+  })
+}
+
+/** 判断某个身份源是否为手机号 */
+function isPhoneIdentity(item: any) {
+  return identityValues(item).some(v => v.toLowerCase().includes('phone'))
 }
 
 /** 身份徽章文案 */
 const identityLabel = computed(() => {
   if (isAnonymous.value)
     return '匿名用户'
-  if (identities.value.some((i: any) => isWechatProvider(i.provider)))
+  if (hasBoundWechat.value)
     return '微信用户'
-  if (identities.value.some((i: any) => i.provider === 'phone') || userInfo.value?.phone)
+  if (hasBoundPhone.value)
     return '手机号用户'
   if (userInfo.value?.email)
     return '邮箱用户'
@@ -34,16 +53,28 @@ const identityLabel = computed(() => {
 const hasBoundPhone = computed(() => {
   if (userInfo.value?.phone)
     return true
-  return identities.value.some((i: any) => i.provider === 'phone')
+  return identities.value.some(isPhoneIdentity)
 })
 
-/** 是否已绑定微信（openid 登录本身即微信身份） */
+/**
+ * 是否已绑定微信（openid 登录本身即微信身份）
+ * 兜底：小程序端 openid 静默登录成功 + 存在身份源 = 微信身份
+ * （本环境身份源不含 provider 字段，只能靠 AppID 形状和端环境来判定）
+ */
 const hasBoundWechat = computed(() => {
-  return identities.value.some((i: any) => isWechatProvider(i.provider))
+  if (identities.value.some(isWechatIdentity))
+    return true
+  return isWeixin.value && !isAnonymous.value && identities.value.length > 0
 })
 
 // 获取用户信息
+// onMounted 与 onShow 可能连续触发，这里做并发去重，避免重复拉取（日志里出现两份）
+let loadingUserInfo = false
 async function getUserInfo() {
+  if (loadingUserInfo)
+    return
+  loadingUserInfo = true
+
   try {
     isWeixin.value = isMpWeixin()
 
@@ -71,7 +102,8 @@ async function getUserInfo() {
         try {
           const res = await getUserIdentities()
           identities.value = res?.identities || []
-          console.log('已绑定身份源:', identities.value)
+          // 转成普通对象再打印，否则控制台里显示成 Proxy，看不清 provider 字段
+          console.log('已绑定身份源:', JSON.parse(JSON.stringify(identities.value)))
         }
         catch (e) {
           console.warn('查询身份源失败:', e)
@@ -93,7 +125,48 @@ async function getUserInfo() {
     userInfo.value = null
     isAnonymous.value = false
   }
+  finally {
+    loadingUserInfo = false
+  }
 }
+
+/**
+ * 把 SDK 给的时间归一化为毫秒时间戳
+ * 实测本环境 session.expires_at 是 Date 对象（Tue Sep 01 2026 06:29:27 GMT+0800），
+ * 其他版本 / 其他端可能是秒级或毫秒级数字，这里三种都兼容。
+ */
+function toTimestampMs(value: any): number {
+  if (!value)
+    return 0
+  if (value instanceof Date)
+    return value.getTime()
+  const n = Number(value)
+  if (!n || isNaN(n))
+    return 0
+  return n > 1e12 ? n : n * 1000
+}
+
+/**
+ * 最后登录时间
+ * 本环境：openid 静默登录不回写 user.last_sign_in_at，身份源里也没有时间字段，
+ * 因此退到第三级 —— 用「当前会话 token 的签发时刻」近似：
+ * token 签发时刻 = expires_at（过期时刻） − expires_in（有效期 7200s）
+ */
+const lastLoginAt = computed(() => {
+  const fromUser = userInfo.value?.last_sign_in_at
+    || identities.value?.[0]?.last_sign_in_at
+    || identities.value?.[0]?.created_at
+  if (fromUser)
+    return fromUser
+
+  const atMs = toTimestampMs(session.value?.expires_at)
+  // expires_in 是「时长」而非时刻，恒为秒（7200），单独换算
+  const expiresIn = Number(session.value?.expires_in)
+  if (atMs && expiresIn)
+    return atMs - expiresIn * 1000
+
+  return ''
+})
 
 // 获取用户名
 function getUserName(user: any) {
@@ -133,11 +206,16 @@ function getUserName(user: any) {
     return `匿名用户 (${user.id.substring(0, 8)}...)`
   }
 
+  // 已绑定微信但没设置昵称（openid 登录不会带昵称）：用 uid 后 4 位兜底，避免显示"未设置"
+  if (user.id && hasBoundWechat.value) {
+    return `微信用户 ${String(user.id).slice(-4)}`
+  }
+
   return '未设置'
 }
 
-// 格式化日期
-function formatDate(timestamp: number) {
+// 格式化日期（支持秒级时间戳、毫秒时间戳、ISO 字符串）
+function formatDate(timestamp: number | string) {
   if (!timestamp)
     return '未知'
 
@@ -308,9 +386,9 @@ onShow(() => {
           <text class="label">创建时间:</text>
           <text class="value">{{ isAnonymous ? '绑定正式身份后可见' : formatDate(userInfo.created_at) }}</text>
         </view>
-        <view class="info-item">
+        <view v-if="!isAnonymous && lastLoginAt" class="info-item">
           <text class="label">最后登录:</text>
-          <text class="value">{{ isAnonymous ? '绑定正式身份后可见' : formatDate(userInfo.last_sign_in_at) }}</text>
+          <text class="value">{{ formatDate(lastLoginAt) }}</text>
         </view>
 
         <button class="logout-btn" @click="handleLogout">
