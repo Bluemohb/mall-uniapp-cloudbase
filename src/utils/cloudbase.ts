@@ -96,8 +96,11 @@ export async function login() {
     if (isMpWeixin()) {
       try {
         // 微信端：OpenID 静默登录（主登录）
-        console.log('[登录] 微信端：尝试 OpenID 静默登录（useWxCloud: false）')
-        const res: any = await auth.signInWithOpenId({ useWxCloud: false })
+        // useWxCloud: true 走「微信云开发」免鉴权通道（环境已关联小程序 AppID）：
+        // SDK 通过 wx.cloud.callFunction 调用 httpOverCallFunction 云函数转发认证请求
+        // （该云函数必须已部署到当前环境，代码见 cloudfunctions/httpOverCallFunction）
+        console.log('[登录] 微信端：尝试 OpenID 静默登录（useWxCloud: true，微信云开发通道）')
+        const res: any = await auth.signInWithOpenId({ useWxCloud: true })
         console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || res)
         if (res?.error) {
           throw res.error
@@ -246,13 +249,15 @@ export async function signInWithPhoneAuth(phoneCode: string) {
 
 /**
  * 【新增】微信小程序 OpenID 静默登录
+ * useWxCloud: true 走「微信云开发」免鉴权通道（环境需关联小程序 AppID，
+ * 并部署 httpOverCallFunction 云函数转发认证请求）
  */
 export async function signInWithOpenId() {
   if (!checkEnvironment()) {
     throw new Error('环境ID未配置')
   }
   // 直接调用 auth 模块的同名方法
-  const { data, error } = await auth.signInWithOpenId({ useWxCloud: false })
+  const { data, error } = await auth.signInWithOpenId({ useWxCloud: true })
 
   if (error) {
     throw error
