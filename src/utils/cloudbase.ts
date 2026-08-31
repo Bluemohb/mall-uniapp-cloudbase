@@ -86,6 +86,42 @@ export function isMpWeixin(): boolean {
  * - 其他端（H5 / App / 其他小程序）：匿名登录兜底 —— 多端通用，
  *   后续用户可通过 linkIdentity / 绑定手机号等方式"转正"（uid 不变，数据自动继承）。
  */
+// ===== 登录状态（模块级，整个小程序生命周期内共享）=====
+
+// 并发去重：App.onLaunch 与页面 onMounted 会同时触发登录，
+// 不去重会发出两组并发的 openid 请求，互相覆盖本地会话
+let loginPromise: Promise<boolean> | null = null
+
+// 本次生命周期内微信 OpenID 登录是否已成功（成功后不再重复升级）
+let wxOpenIdDone = false
+
+/**
+ * 仅尝试微信 OpenID 登录：失败直接抛错，不做匿名回退
+ * （用于「匿名会话升级」场景 —— 回退成新的匿名 uid 会让原数据丢失）
+ *
+ * useWxCloud: true 走「微信云开发」免鉴权通道（环境已关联小程序 AppID）：
+ * SDK 通过 wx.cloud.callFunction 调用 httpOverCallFunction 云函数转发认证请求
+ * （该云函数必须已部署到当前环境，代码见 cloudfunctions/httpOverCallFunction）
+ */
+async function signInWithOpenIdOnly() {
+  const res: any = await auth.signInWithOpenId({ useWxCloud: true })
+  console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || res)
+  if (res?.error) {
+    throw res.error
+  }
+
+  // 二次确认：会话真的建立（有 user.id 且不是 accessKey 匿名态）
+  // （SDK 失败时不抛异常，而是返回 { data, error }，必须显式检查，否则会"假成功"）
+  const check: any = await auth.getSession()
+  const session = check?.data?.session
+  if (!session || !session.user?.id || session.scope === 'accessKey') {
+    throw new Error(`openid 登录未建立有效会话（scope: ${session?.scope || 'none'}）`)
+  }
+
+  wxOpenIdDone = true
+  return session
+}
+
 /**
  * 执行登录并二次确认会话已建立
  * （SDK 的 signInWithOpenId / signInAnonymously 失败时都不抛异常，
@@ -96,28 +132,25 @@ export async function login() {
     if (isMpWeixin()) {
       try {
         // 微信端：OpenID 静默登录（主登录）
-        // useWxCloud: true 走「微信云开发」免鉴权通道（环境已关联小程序 AppID）：
-        // SDK 通过 wx.cloud.callFunction 调用 httpOverCallFunction 云函数转发认证请求
-        // （该云函数必须已部署到当前环境，代码见 cloudfunctions/httpOverCallFunction）
         console.log('[登录] 微信端：尝试 OpenID 静默登录（useWxCloud: true，微信云开发通道）')
-        const res: any = await auth.signInWithOpenId({ useWxCloud: true })
-        console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || res)
-        if (res?.error) {
-          throw res.error
+        const session: any = await signInWithOpenIdOnly()
+        if (session?.user?.is_anonymous) {
+          throw new Error('openid 登录后仍为匿名态')
         }
-
-        // 二次确认：会话真的建立（有 user.id 且不是 accessKey 匿名态）
-        const check: any = await auth.getSession()
-        const session = check?.data?.session
-        if (!session || !session.user?.id || session.scope === 'accessKey') {
-          throw new Error(`openid 登录未建立有效会话（scope: ${session?.scope || 'none'}）`)
-        }
-
         console.log('✅ 微信 OpenID 静默登录成功（身份稳定）')
       }
       catch (e: any) {
-        // 回退：匿名登录兜底（身份不稳定，仅保证可用）
-        console.warn('OpenID 登录失败，回退匿名登录:', e?.message || e)
+        console.warn('OpenID 登录失败:', e?.message || e)
+
+        // ⚠️ 关键：已有会话（哪怕是匿名的）必须保留。
+        // 直接再 signInAnonymously() 会生成新的匿名 uid，购物车 / 订单会"消失"。
+        const cur: any = await auth.getSession()
+        if (cur?.data?.session?.user?.id) {
+          console.log('🟡 保留现有会话（游客身份），本次 OpenID 登录未成功')
+          return cur.data.session
+        }
+
+        // 确实连会话都没有，才做匿名兜底（身份不稳定，仅保证可用）
         const anonRes: any = await auth.signInAnonymously()
         // ⚠️ 匿名登录同样可能"假成功"（失败时返回 { data, error } 而非抛异常）
         if (anonRes?.error) {
@@ -151,15 +184,58 @@ export async function login() {
 }
 
 /**
- * 确保已登录：有会话直接返回 true；无会话时自动登录（微信 openid / 其他端匿名）
- * 建议在 App 启动时调用，实现"无感登录"
+ * 确保已登录，建议在 App 启动时调用，实现"无感登录"
+ *
+ * 分三种情况：
+ * 1. 有正式会话 → 直接返回
+ * 2. 有【匿名】会话（微信端）→ 本地缓存下来的游客态不会自己"转正"，
+ *    必须主动用 OpenID 登录升级，否则用户会一直停留在"匿名用户"
+ *    （这正是"首次进页面是匿名用户，退出登录后重进才变正式用户"的根因：
+ *     旧的判断只问"有没有会话"，不问"是不是匿名"，于是跳过了 openid 登录）
+ * 3. 无会话 → 走 login()（微信 openid，失败则匿名兜底）
  */
 export async function ensureLogin(): Promise<boolean> {
+  // 并发去重：App.onLaunch 与页面 onMounted 同时调用时只真正执行一次
+  if (!loginPromise) {
+    loginPromise = doEnsureLogin().then(
+      (ok) => {
+        loginPromise = null
+        return ok
+      },
+      (err) => {
+        loginPromise = null
+        throw err
+      },
+    )
+  }
+  return loginPromise
+}
+
+async function doEnsureLogin(): Promise<boolean> {
   try {
     const { data } = await auth.getSession()
-    if (data.session) {
+    const session: any = data?.session
+    const uid: string = session?.user?.id || ''
+
+    if (uid) {
+      const anonymous = !!session.user?.is_anonymous || session.scope === 'anonymous'
+      console.log(`[登录] 已有本地会话 uid=${uid} scope=${session.scope} is_anonymous=${anonymous}`)
+
+      if (isMpWeixin() && anonymous && !wxOpenIdDone) {
+        console.log('[登录] 检测到缓存的匿名会话，尝试用微信 OpenID 升级为正式身份')
+        try {
+          const next: any = await signInWithOpenIdOnly()
+          const newUid: string = next?.user?.id || ''
+          const same = newUid === uid
+          console.log(`✅ 匿名已升级为微信正式用户（uid: ${uid} → ${newUid}）${same ? ' uid 未变，数据自动继承' : ' ⚠️ uid 已变，请确认数据是否继承'}`)
+        }
+        catch (e: any) {
+          console.warn('匿名升级失败，保持游客身份:', e?.message || e)
+        }
+      }
       return true
     }
+
     await login()
     return true
   }
@@ -256,14 +332,8 @@ export async function signInWithOpenId() {
   if (!checkEnvironment()) {
     throw new Error('环境ID未配置')
   }
-  // 直接调用 auth 模块的同名方法
-  const { data, error } = await auth.signInWithOpenId({ useWxCloud: true })
-
-  if (error) {
-    throw error
-  }
-
-  return data
+  // 复用统一实现：内部会二次确认会话真的建立（避免"假成功"）
+  return signInWithOpenIdOnly()
 }
 
 /**
@@ -409,6 +479,8 @@ export async function initCloudBase() {
 export async function logout() {
   try {
     await auth.signOut()
+    // 退出后重置标记：下次进入时重新走一次 OpenID 登录
+    wxOpenIdDone = false
     return { success: true, message: '已成功退出登录' }
   }
   catch (error) {

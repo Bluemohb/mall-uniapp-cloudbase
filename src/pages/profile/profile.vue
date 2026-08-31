@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onShow, ref } from 'vue'
 import { auth, ensureLogin, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
 
 const userInfo = ref<any>(null)
@@ -8,14 +8,22 @@ const isAnonymous = ref(false)
 const identities = ref<any[]>([])
 const isWeixin = ref(false)
 
+/**
+ * 判断某个身份源是否为微信（OpenID 登录）
+ * 不同环境返回的 provider 可能是 wechat / wx_openid / openid / wx.cloud...，做宽松匹配
+ */
+function isWechatProvider(provider: any) {
+  const p = String(provider || '').toLowerCase()
+  return p.includes('wechat') || p.includes('wx') || p.includes('openid')
+}
+
 /** 身份徽章文案 */
 const identityLabel = computed(() => {
   if (isAnonymous.value)
     return '匿名用户'
-  const providers = identities.value.map((i: any) => i.provider)
-  if (providers.includes('wechat') || providers.includes('openid'))
+  if (identities.value.some((i: any) => isWechatProvider(i.provider)))
     return '微信用户'
-  if (providers.includes('phone') || userInfo.value?.phone)
+  if (identities.value.some((i: any) => i.provider === 'phone') || userInfo.value?.phone)
     return '手机号用户'
   if (userInfo.value?.email)
     return '邮箱用户'
@@ -31,8 +39,7 @@ const hasBoundPhone = computed(() => {
 
 /** 是否已绑定微信（openid 登录本身即微信身份） */
 const hasBoundWechat = computed(() => {
-  const providers = identities.value.map((i: any) => i.provider)
-  return providers.includes('wechat') || providers.includes('openid')
+  return identities.value.some((i: any) => isWechatProvider(i.provider))
 })
 
 // 获取用户信息
@@ -229,6 +236,14 @@ async function bindWechat() {
 
 onMounted(() => {
   getUserInfo()
+})
+
+// 从登录页返回、或登录异步完成后回到本页时，
+// 若之前渲染的是"匿名用户"（或还没拿到信息），重新拉取一次，避免停留在旧状态
+onShow(() => {
+  if (!userInfo.value || isAnonymous.value) {
+    getUserInfo()
+  }
 })
 </script>
 
