@@ -1,7 +1,0 @@
-{
-  "name": "httpOverCallFunction",
-  "version": "1.0.0",
-  "description": "HTTP 转发云函数：转发微信云开发认证/网关请求（useWxCloud 通道必需）",
-  "main": "index.js",
-  "dependencies": {}
-}

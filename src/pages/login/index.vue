@@ -1,5 +1,24 @@
 <script setup lang="ts">
-import { isMpWeixin, login, signInWithOpenId, signInWithPhoneAuth } from '../../utils/cloudbase'
+import { onShow } from '@dcloudio/uni-app'
+import { auth, isMpWeixin, login, signInWithOpenId, signInWithPhoneAuth } from '../../utils/cloudbase'
+
+// 已登录（正式微信用户）不应再看到"选择登录方式"页：直接提示并返回
+onShow(async () => {
+  try {
+    const { data } = await auth.getSession()
+    const session: any = data?.session
+    if (session?.user?.id && !session.user?.is_anonymous) {
+      uni.showToast({
+        title: '您已登录',
+        icon: 'success',
+      })
+      setTimeout(() => uni.navigateBack(), 800)
+    }
+  }
+  catch {
+    // 无会话/未登录，正常展示登录方式
+  }
+})
 
 // 匿名登录（多端游客模式）
 // - 微信端：App 启动已自动 OpenID 登录，无需再游客登录（避免换号丢数据）
@@ -44,6 +63,20 @@ async function openIdLogin() {
   })
 
   try {
+    // 二次防护：已登录正式用户直接返回，避免在已有会话时重复调用
+    // signInWithOpenId 导致"登录失败"（网关侧报错）
+    const { data } = await auth.getSession()
+    const session: any = data?.session
+    if (session?.user?.id && !session.user?.is_anonymous) {
+      uni.hideLoading()
+      uni.showToast({
+        title: '您已登录',
+        icon: 'success',
+      })
+      setTimeout(() => uni.navigateBack(), 800)
+      return
+    }
+
     const loginResult = await signInWithOpenId()
     console.log('微信 OpenID 登录成功:', loginResult)
     uni.hideLoading()
@@ -62,8 +95,10 @@ async function openIdLogin() {
   catch (error: any) {
     uni.hideLoading()
     console.error('微信 OpenID 登录失败:', error)
+    // 优先展示 SDK 真实错误（error_description），便于定位
+    const msg = error?.error_description || error?.message || '登录失败，请重试'
     uni.showToast({
-      title: error.message || '登录失败，请重试',
+      title: msg.slice(0, 30),
       icon: 'none',
     })
   }

@@ -104,12 +104,12 @@ let wxOpenIdDone = false
  * 仅尝试微信 OpenID 登录：失败直接抛错，不做匿名回退
  * （用于「匿名会话升级」场景 —— 回退成新的匿名 uid 会让原数据丢失）
  *
- * useWxCloud: true 走「微信云开发」免鉴权通道（环境已关联小程序 AppID）：
- * SDK 通过 wx.cloud.callFunction 调用 httpOverCallFunction 云函数转发认证请求
- * （该云函数必须已部署到当前环境，代码见 cloudfunctions/httpOverCallFunction）
+ * useWxCloud: false 走 CloudBase 标准 HTTPS 网关（@cloudbase/js-sdk 直连，
+ * 与匿名/手机号/数据库同一通道，无需 httpOverCallFunction 云函数）。
+ * 依赖：小程序后台已配置 request 合法域名 https://{env}.api.tcloudbasegateway.com
  */
 async function signInWithOpenIdOnly() {
-  const res: any = await auth.signInWithOpenId({ useWxCloud: true })
+  const res: any = await auth.signInWithOpenId({ useWxCloud: false })
   console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || res)
   if (res?.error) {
     throw res.error
@@ -137,7 +137,7 @@ export async function login() {
     if (isMpWeixin()) {
       try {
         // 微信端：OpenID 静默登录（主登录）
-        console.log('[登录] 微信端：尝试 OpenID 静默登录（useWxCloud: true，微信云开发通道）')
+        console.log('[登录] 微信端：尝试 OpenID 静默登录（CloudBase 标准网关通道）')
         const session: any = await signInWithOpenIdOnly()
         if (session?.user?.is_anonymous) {
           throw new Error('openid 登录后仍为匿名态')
@@ -329,9 +329,8 @@ export async function signInWithPhoneAuth(phoneCode: string) {
 }
 
 /**
- * 【新增】微信小程序 OpenID 静默登录
- * useWxCloud: true 走「微信云开发」免鉴权通道（环境需关联小程序 AppID，
- * 并部署 httpOverCallFunction 云函数转发认证请求）
+ * 微信小程序 OpenID 静默登录
+ * 走 CloudBase 标准 HTTPS 网关（无需 httpOverCallFunction 云函数）
  */
 export async function signInWithOpenId() {
   if (!checkEnvironment()) {
