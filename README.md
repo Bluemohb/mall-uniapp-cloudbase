@@ -164,13 +164,20 @@ const ENV_ID = 'your-env-id'; // 替换为您的云开发环境ID
 
 #### 4. 配置微信小程序域名
 
-在微信小程序管理后台的【开发】->【开发管理】->【开发设置】->【服务器域名】中配置：
+配置入口（二选一，效果相同）：
+- 微信小程序管理后台【开发】->【开发管理】->【开发设置】->【服务器域名】
+- CloudBase 控制台【小程序认证】-> 详情 -> 服务器域名区域（会同步到微信平台，推荐）
 
 **request 合法域名：**
 ```
 https://tcb-api.tencentcloudapi.com
 https://your-env-id.service.tcloudbase.com
+https://your-env-id.api.tcloudbasegateway.com
 ```
+
+> `https://{env}.api.tcloudbasegateway.com` 是 CloudBase 标准 HTTPS 网关域名。
+> `@cloudbase/js-sdk` 在 `useWxCloud: false` 时（微信 OpenID 登录、匿名登录、数据库等）直连该网关，
+> 必须加入 request 合法域名，否则真机预览 / 线上会报"不在以下 request 合法域名列表中"。
 
 **uploadFile 合法域名：**
 ```
