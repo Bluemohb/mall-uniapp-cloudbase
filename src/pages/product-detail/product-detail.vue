@@ -348,10 +348,10 @@ function buyNow() {
 }
 
 /**
- * 跳转购物车
+ * 跳转购物车（tabBar 页用 switchTab）
  */
 function goToCart() {
-  uni.navigateTo({ url: '/pages/cart/cart' })
+  uni.switchTab({ url: '/pages/cart/cart' })
 }
 
 // ============================================================

@@ -266,7 +266,7 @@ async function handleLogout() {
             title: '已退出登录',
             icon: 'success',
           })
-          uni.navigateTo({
+          uni.switchTab({
             url: '/pages/index/index',
           })
         }
@@ -279,6 +279,50 @@ async function handleLogout() {
       }
     },
   })
+}
+
+// ============================================================
+// 个人中心：订单与服务入口（第6步新增）
+// ============================================================
+
+/** 跳转订单列表，可按状态过滤 */
+function goOrders(status: string) {
+  uni.navigateTo({
+    url: `/pages/order/order-list${status ? `?status=${status}` : ''}`,
+  })
+}
+
+/** 跳转购物车（tabBar 页用 switchTab） */
+function goCart() {
+  uni.switchTab({
+    url: '/pages/cart/cart',
+  })
+}
+
+/** 跳转收货地址 */
+function goAddress() {
+  uni.navigateTo({
+    url: '/pages/address/address-list',
+  })
+}
+
+/** 打开云开发文档 */
+function openDocs() {
+  // #ifdef H5
+  window.open('https://docs.cloudbase.net/', '_blank')
+  // #endif
+
+  // #ifndef H5
+  uni.setClipboardData({
+    data: 'https://docs.cloudbase.net/',
+    success: () => {
+      uni.showToast({
+        title: '文档地址已复制',
+        icon: 'success',
+      })
+    },
+  })
+  // #endif
 }
 
 // 跳转到登录页面
@@ -326,139 +370,206 @@ onShow(() => {
 </script>
 
 <template>
-  <view class="profile-container">
-    <view class="profile-header">
-      <text class="title">用户信息</text>
-    </view>
-
-    <view class="profile-content">
-      <view v-if="userInfo" class="user-info">
-        <!-- 身份徽章 -->
+  <view class="profile-page">
+    <!-- ========== 顶部用户卡片 ========== -->
+    <view class="user-card">
+      <view class="avatar">
+        {{ userInfo ? getUserName(userInfo).charAt(0) : '👤' }}
+      </view>
+      <view class="user-meta">
+        <text class="nickname">{{ userInfo ? getUserName(userInfo) : '未登录' }}</text>
         <view class="identity-badge" :class="{ anon: isAnonymous }">
           {{ identityLabel }}
         </view>
-
-        <!-- 匿名用户：引导绑定正式身份（uid 不变，数据自动继承） -->
-        <view v-if="isAnonymous" class="bind-card">
-          <text class="bind-title">当前为游客身份</text>
-          <text class="bind-desc">绑定手机号 / 微信后，订单、地址将永久保留，换设备也不丢失</text>
-          <button class="bind-btn" @click="goBindIdentity">
-            立即绑定（保留当前数据）
-          </button>
-        </view>
-
-        <!-- 微信正式用户：提示身份稳定 -->
-        <view v-else-if="identityLabel === '微信用户'" class="bind-card stable">
-          <text class="bind-title">✅ 已通过微信登录</text>
-          <text class="bind-desc">账号与微信绑定，身份稳定，清缓存 / 换设备均不会丢失订单数据</text>
-        </view>
-
-        <!-- 非微信端（H5/App）：未绑定微信时提供 OAuth 绑定（匿名转正） -->
-        <view v-else-if="!isWeixin && !hasBoundWechat" class="bind-card">
-          <text class="bind-title">绑定微信账号</text>
-          <text class="bind-desc">绑定后可用微信登录，当前数据自动保留</text>
-          <button class="bind-btn" @click="bindWechat">
-            绑定微信
-          </button>
-        </view>
-
-        <view class="info-item">
-          <text class="label">用户ID:</text>
-          <text class="value">{{ userInfo.id || '未知' }}</text>
-        </view>
-        <!-- <view class="info-item">
-          <text class="label">登录类型:</text>
-          <text class="value">{{ session.scope }}</text>
-        </view> -->
-        <view v-if="userInfo.phone" class="info-item">
-          <text class="label">手机号:</text>
-          <text class="value">{{ userInfo.phone }}</text>
-        </view>
-        <view v-if="userInfo.email" class="info-item">
-          <text class="label">邮箱:</text>
-          <text class="value">{{ userInfo.email }}</text>
-        </view>
-        <view class="info-item">
-          <text class="label">用户名:</text>
-          <text class="value">{{ getUserName(userInfo) }}</text>
-        </view>
-        <view class="info-item">
-          <text class="label">创建时间:</text>
-          <text class="value">{{ isAnonymous ? '绑定正式身份后可见' : formatDate(userInfo.created_at) }}</text>
-        </view>
-        <view v-if="!isAnonymous && lastLoginAt" class="info-item">
-          <text class="label">最后登录:</text>
-          <text class="value">{{ formatDate(lastLoginAt) }}</text>
-        </view>
-
-        <button class="logout-btn" @click="handleLogout">
-          退出登录
-        </button>
       </view>
+      <view v-if="!userInfo" class="card-action" @click="goToLogin">去登录</view>
+    </view>
 
-      <view v-else class="no-user">
-        <text class="no-user-text">未登录</text>
-        <button class="login-btn" @click="goToLogin">
-          去登录
-        </button>
+    <!-- ========== 身份绑定提示 ========== -->
+    <view v-if="userInfo && isAnonymous" class="bind-card" @click="goBindIdentity">
+      <view class="bind-text">
+        <text class="bind-title">当前为游客身份</text>
+        <text class="bind-desc">绑定手机号 / 微信，订单与地址永久保留</text>
+      </view>
+      <text class="bind-arrow">立即绑定 ›</text>
+    </view>
+
+    <view v-else-if="userInfo && identityLabel === '微信用户'" class="bind-card stable">
+      <view class="bind-text">
+        <text class="bind-title">✅ 已通过微信登录</text>
+        <text class="bind-desc">身份稳定，清缓存 / 换设备订单数据不丢失</text>
       </view>
     </view>
+
+    <view v-else-if="userInfo && !isWeixin && !hasBoundWechat" class="bind-card" @click="bindWechat">
+      <view class="bind-text">
+        <text class="bind-title">绑定微信账号</text>
+        <text class="bind-desc">绑定后可用微信登录，当前数据自动保留</text>
+      </view>
+      <text class="bind-arrow">去绑定 ›</text>
+    </view>
+
+    <!-- ========== 我的订单 ========== -->
+    <view class="card-section">
+      <view class="section-header">
+        <text class="section-title">我的订单</text>
+        <text class="section-more" @click="goOrders('')">查看全部 ›</text>
+      </view>
+      <view class="order-entries">
+        <view class="order-entry" @click="goOrders('')">
+          <text class="entry-icon">📋</text>
+          <text class="entry-name">全部订单</text>
+        </view>
+        <view class="order-entry" @click="goOrders('pending')">
+          <text class="entry-icon">💳</text>
+          <text class="entry-name">待支付</text>
+        </view>
+        <view class="order-entry" @click="goOrders('shipped')">
+          <text class="entry-icon">📦</text>
+          <text class="entry-name">已发货</text>
+        </view>
+        <view class="order-entry" @click="goOrders('completed')">
+          <text class="entry-icon">✅</text>
+          <text class="entry-name">已完成</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 账号信息 ========== -->
+    <view v-if="userInfo" class="card-section">
+      <view class="section-header">
+        <text class="section-title">账号信息</text>
+      </view>
+      <view class="info-list">
+        <view class="info-row">
+          <text class="info-label">用户ID</text>
+          <text class="info-value">{{ userInfo.id || '未知' }}</text>
+        </view>
+        <view v-if="userInfo.phone" class="info-row">
+          <text class="info-label">手机号</text>
+          <text class="info-value">{{ userInfo.phone }}</text>
+        </view>
+        <view v-if="userInfo.email" class="info-row">
+          <text class="info-label">邮箱</text>
+          <text class="info-value">{{ userInfo.email }}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">创建时间</text>
+          <text class="info-value">{{ isAnonymous ? '绑定正式身份后可见' : formatDate(userInfo.created_at) }}</text>
+        </view>
+        <view v-if="!isAnonymous && lastLoginAt" class="info-row">
+          <text class="info-label">最后登录</text>
+          <text class="info-value">{{ formatDate(lastLoginAt) }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 服务列表 ========== -->
+    <view class="card-section menu-list">
+      <view class="menu-item" @click="goAddress">
+        <text class="menu-icon">📍</text>
+        <text class="menu-text">收货地址</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @click="goCart">
+        <text class="menu-icon">🛒</text>
+        <text class="menu-text">购物车</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @click="openDocs">
+        <text class="menu-icon">📚</text>
+        <text class="menu-text">云开发文档</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- ========== 退出登录 ========== -->
+    <view v-if="userInfo" class="logout-btn" @click="handleLogout">
+      退出登录
+    </view>
+
+    <view class="bottom-space" />
   </view>
 </template>
 
 <style scoped>
-.profile-container {
+.profile-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40rpx;
+  background-color: #f5f5f5;
+  padding-bottom: 40rpx;
 }
 
-.profile-header {
-  text-align: center;
-  margin-bottom: 60rpx;
+/* ========== 顶部用户卡片 ========== */
+.user-card {
+  display: flex;
+  align-items: center;
+  padding: 48rpx 32rpx;
+  background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
-.title {
-  font-size: 48rpx;
-  font-weight: bold;
-  color: white;
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 4rpx solid rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52rpx;
+  color: #fff;
+  margin-right: 24rpx;
+  flex-shrink: 0;
 }
 
-.profile-content {
-  background: white;
-  border-radius: 20rpx;
-  padding: 40rpx;
-  box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.1);
-}
-
-.user-info {
+.user-meta {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.nickname {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-action {
+  padding: 12rpx 32rpx;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 /* ========== 身份徽章 ========== */
 .identity-badge {
-  display: inline-block;
   align-self: flex-start;
-  padding: 10rpx 24rpx;
+  padding: 6rpx 20rpx;
   border-radius: 30rpx;
-  font-size: 24rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  font-size: 22rpx;
+  color: #667eea;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .identity-badge.anon {
-  background: #999;
+  color: #888;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 /* ========== 绑定引导卡片 ========== */
 .bind-card {
   display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 28rpx;
-  margin-top: 10rpx;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20rpx 24rpx;
+  padding: 24rpx 28rpx;
   border-radius: 16rpx;
   background: #fff7e6;
   border: 2rpx solid #ffd591;
@@ -469,101 +580,166 @@ onShow(() => {
   border-color: #b7eb8f;
 }
 
+.bind-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  flex: 1;
+}
+
 .bind-title {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: #333;
 }
 
 .bind-desc {
-  font-size: 26rpx;
-  color: #666;
-  line-height: 1.5;
-}
-
-.bind-btn {
-  margin-top: 12rpx;
-  padding: 0 30rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  font-size: 28rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border: none;
-  border-radius: 36rpx;
-}
-
-.bind-btn:active {
-  opacity: 0.85;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-  padding: 24rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
-}
-
-.info-item:last-of-type {
-  border-bottom: none;
-}
-
-.label {
-  font-size: 28rpx;
-  color: #666;
-  font-weight: 500;
-}
-
-.value {
-  font-size: 32rpx;
-  color: #333;
-  word-break: break-all;
+  font-size: 24rpx;
+  color: #888;
   line-height: 1.4;
 }
 
+.bind-arrow {
+  font-size: 26rpx;
+  color: #e6a23c;
+  flex-shrink: 0;
+}
+
+.bind-card.stable .bind-arrow {
+  display: none;
+}
+
+/* ========== 通用卡片 ========== */
+.card-section {
+  margin: 20rpx 24rpx;
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-more {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* ========== 我的订单 ========== */
+.order-entries {
+  display: flex;
+}
+
+.order-entry {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.entry-icon {
+  font-size: 48rpx;
+}
+
+.entry-name {
+  font-size: 24rpx;
+  color: #333;
+}
+
+/* ========== 账号信息 ========== */
+.info-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+  gap: 24rpx;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 26rpx;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-size: 26rpx;
+  color: #333;
+  word-break: break-all;
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* ========== 服务列表 ========== */
+.menu-list {
+  padding: 0 24rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-icon {
+  font-size: 34rpx;
+  margin-right: 20rpx;
+}
+
+.menu-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.menu-arrow {
+  font-size: 32rpx;
+  color: #ccc;
+}
+
+/* ========== 退出登录 ========== */
 .logout-btn {
-  width: 100%;
+  margin: 30rpx 24rpx 0;
   height: 88rpx;
   line-height: 88rpx;
   background: #ff4757;
   color: white;
-  border: none;
-  border-radius: 12rpx;
-  font-size: 32rpx;
-  font-weight: bold;
-  margin-top: 40rpx;
+  text-align: center;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
 }
 
 .logout-btn:active {
   background: #ff3838;
 }
 
-.no-user {
-  text-align: center;
-  padding: 60rpx 20rpx;
-}
-
-.no-user-text {
-  font-size: 32rpx;
-  color: #999;
-  display: block;
-  margin-bottom: 40rpx;
-}
-
-.login-btn {
-  width: 200rpx;
-  height: 88rpx;
-  line-height: 88rpx;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 12rpx;
-  font-size: 28rpx;
-  font-weight: bold;
-}
-
-.login-btn:active {
-  background: #5a6fd8;
+.bottom-space {
+  height: 20rpx;
 }
 </style>

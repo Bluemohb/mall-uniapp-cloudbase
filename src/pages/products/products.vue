@@ -90,6 +90,13 @@ const hasMore = ref(true)
 const isRefreshing = ref(false)
 
 /**
+ * 当前分类过滤（空串 = 全部）
+ * 与首页联动：首页把分类写入本地存储 products_category，
+ * 本页 onShow 时读取，兼容 tabBar 页面不销毁、onLoad 只触发一次的特性
+ */
+const categoryFilter = ref('')
+
+/**
  * 计算属性：是否显示空状态
  * 当不在加载中 且 列表为空时，显示"暂无商品"提示
  */
@@ -146,7 +153,14 @@ async function fetchProducts(isRefresh = false) {
     // 第2步：构建查询
     // collection() 参数是集合名，这里叫 'products'
     // 如果集合不存在，CloudBase 会在首次写入时自动创建
-    const query = db.collection('products')
+    let query: any = db.collection('products')
+
+    // 有分类过滤时追加 where 条件（首页分类入口联动）
+    if (categoryFilter.value) {
+      query = query.where({ category: categoryFilter.value })
+    }
+
+    query = query
       .orderBy('createTime', 'desc')  // 按创建时间倒序（新商品在前）
       .skip((currentPage.value - 1) * pageSize) // 跳过前面页的数据
       .limit(pageSize)                          // 限制返回条数
@@ -228,8 +242,18 @@ onLoad(() => {
  */
 onShow(() => {
   console.log('🛒 商品列表页 - onShow')
-  // 首次进入时加载数据
-  if (productList.value.length === 0) {
+  // 读取首页金刚区写入的分类意图；分类变化时重置分页并重新加载
+  // （tabBar 页面不销毁，再次进入时 onLoad 不会触发，只能靠 onShow 感知变化）
+  const category = uni.getStorageSync('products_category') || ''
+  if (category !== categoryFilter.value) {
+    categoryFilter.value = category
+    productList.value = []
+    currentPage.value = 1
+    hasMore.value = true
+    fetchProducts()
+  }
+  else if (productList.value.length === 0) {
+    // 首次进入时加载数据
     fetchProducts()
   }
 })
@@ -253,12 +277,24 @@ function goToDetail(productId: string) {
 }
 
 /**
- * 去购物车页面
+ * 去购物车页面（tabBar 页用 switchTab）
  */
 function goToCart() {
-  uni.navigateTo({
+  uni.switchTab({
     url: '/pages/cart/cart',
   })
+}
+
+/**
+ * 清除分类筛选
+ */
+function clearCategory() {
+  uni.setStorageSync('products_category', '')
+  categoryFilter.value = ''
+  productList.value = []
+  currentPage.value = 1
+  hasMore.value = true
+  fetchProducts()
 }
 </script>
 
@@ -278,6 +314,12 @@ function goToCart() {
       商品卡片网格布局
       使用 flex 布局，每行2列
     -->
+    <!-- 分类标题（首页分类入口联动） -->
+    <view v-if="categoryFilter" class="category-title">
+      <text>{{ categoryFilter }}</text>
+      <text class="category-clear" @click="clearCategory">清除筛选</text>
+    </view>
+
     <view v-if="productList.length > 0" class="product-grid">
       <!--
         v-for 循环渲染商品列表
@@ -356,6 +398,23 @@ function goToCart() {
   padding: 20rpx;
   background-color: #f5f5f5;
   min-height: 100vh;
+}
+
+/* ========== 分类标题 ========== */
+.category-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 8rpx 20rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.category-clear {
+  font-size: 24rpx;
+  font-weight: normal;
+  color: #667eea;
 }
 
 /* ========== 商品网格 ========== */

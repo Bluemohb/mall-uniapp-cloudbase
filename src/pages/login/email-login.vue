@@ -96,9 +96,9 @@ async function handleLogin() {
       icon: 'success',
     })
 
-    // 延迟跳转到首页
+    // 延迟跳转到首页（tabBar 页用 switchTab）
     setTimeout(() => {
-      uni.navigateTo({
+      uni.switchTab({
         url: '/pages/index/index',
       })
     }, 1000)

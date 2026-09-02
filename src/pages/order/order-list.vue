@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import { app, login } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
 import { ORDER_STATUS_MAP, type Order, type OrderStatus } from '@/utils/order'
@@ -130,6 +130,16 @@ const hasMore = ref(true)
 // ============================================================
 // 页面生命周期
 // ============================================================
+
+/**
+ * 个人中心可带 status 参数跳转（如 order-list?status=pending），
+ * onLoad 先于 onShow 执行，先设好筛选，onShow 的 refresh() 会按新状态查询
+ */
+onLoad((options: any) => {
+  if (options?.status && tabs.some(t => t.value === options.status)) {
+    activeStatus.value = options.status
+  }
+})
 
 onShow(() => {
   // 每次回到列表页都刷新（比如从详情页返回、操作了状态）
@@ -251,9 +261,9 @@ function goDetail(id?: string) {
   uni.navigateTo({ url: `/pages/order/order-detail?id=${id}` })
 }
 
-/** 去逛逛 */
+/** 去逛逛（tabBar 页用 switchTab） */
 function goShopping() {
-  uni.navigateTo({ url: '/pages/products/products' })
+  uni.switchTab({ url: '/pages/products/products' })
 }
 
 /**

@@ -253,7 +253,7 @@ function goToDetail(productId: string) {
 }
 
 function goShopping() {
-  uni.navigateTo({ url: '/pages/products/products' })
+  uni.switchTab({ url: '/pages/products/products' })
 }
 
 function goCheckout() {

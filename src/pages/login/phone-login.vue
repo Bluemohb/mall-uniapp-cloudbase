@@ -97,7 +97,7 @@ async function handleLogin() {
     })
 
     setTimeout(() => {
-      uni.navigateTo({
+      uni.switchTab({
         url: '/pages/index/index',
       })
     }, 1000)

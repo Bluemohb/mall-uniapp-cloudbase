@@ -42,7 +42,7 @@ async function anonymousLogin() {
 
     uni.hideLoading()
     setTimeout(() => {
-      uni.navigateTo({
+      uni.switchTab({
         url: '/pages/index/index',
       })
     }, 1000)
@@ -85,9 +85,9 @@ async function openIdLogin() {
       title: '登录成功',
       icon: 'success',
     })
-    // 登录成功后，跳转到首页并关闭所有历史页面
+    // 登录成功后，跳转到首页（tabBar 页用 switchTab）
     setTimeout(() => {
-      uni.navigateTo({
+      uni.switchTab({
         url: '/pages/index/index',
       })
     }, 1000)
@@ -128,9 +128,9 @@ async function handleGetPhoneNumber(event: any) {
       title: '登录成功',
       icon: 'success',
     })
-    // 延迟跳转到首页
+    // 延迟跳转到首页（tabBar 页用 switchTab）
     setTimeout(() => {
-      uni.navigateTo({
+      uni.switchTab({
         url: '/pages/index/index',
       })
     }, 1000)
