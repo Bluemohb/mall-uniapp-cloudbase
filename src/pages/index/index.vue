@@ -108,7 +108,7 @@ function goProducts() {
 
 /** 点击分类：把分类写入本地存储，再切换到商品列表页 */
 function goCategory(value: string) {
-  uni.setStorageSync('products_category', value)
+  uni.setStorageSync('products_category', String(value))
   uni.switchTab({ url: '/pages/products/products' })
 }
 
@@ -158,16 +158,14 @@ onShow(() => {
 
     <!-- ========== 分类金刚区 ========== -->
     <view class="category-grid">
-      <view
-        v-for="cat in categories"
-        :key="cat.name"
-        class="category-item"
-        @click="goCategory(cat.value)"
-      >
-        <view class="category-icon" :style="{ background: cat.bg }">
-          {{ cat.icon }}
+      <view v-for="cat in categories" :key="cat.name" class="category-item">
+        <!-- 点击热区仅限图标+文字所在内容块，避免误触格子内空白 -->
+        <view class="category-cell" @click="goCategory(cat.value)">
+          <view class="category-icon" :style="{ background: cat.bg }">
+            {{ cat.icon }}
+          </view>
+          <text class="category-name">{{ cat.name }}</text>
         </view>
-        <text class="category-name">{{ cat.name }}</text>
       </view>
     </view>
 
@@ -294,6 +292,12 @@ onShow(() => {
 
 .category-item {
   flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+/* 内容块（图标+文字），点击热区随内容宽度，不铺满整格 */
+.category-cell {
   display: flex;
   flex-direction: column;
   align-items: center;

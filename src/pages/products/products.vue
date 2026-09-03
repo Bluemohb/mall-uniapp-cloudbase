@@ -244,7 +244,13 @@ onShow(() => {
   console.log('🛒 商品列表页 - onShow')
   // 读取首页金刚区写入的分类意图；分类变化时重置分页并重新加载
   // （tabBar 页面不销毁，再次进入时 onLoad 不会触发，只能靠 onShow 感知变化）
-  const category = uni.getStorageSync('products_category') || ''
+  const raw = uni.getStorageSync('products_category')
+  // 防御：分类只接受字符串。若本地存储残留对象/数组等脏数据，
+  // 分类标题会渲染成 "[object Object]"，这里视为无筛选并顺手清理
+  if (raw !== '' && typeof raw !== 'string') {
+    uni.setStorageSync('products_category', '')
+  }
+  const category = typeof raw === 'string' ? raw : ''
   if (category !== categoryFilter.value) {
     categoryFilter.value = category
     productList.value = []
