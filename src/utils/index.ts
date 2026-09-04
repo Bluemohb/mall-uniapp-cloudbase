@@ -244,3 +244,36 @@ export class EventBus {
  * 全局事件总线实例
  */
 export const globalEventBus = new EventBus()
+
+// ============================================================
+// 微信资料（头像 / 昵称）本地缓存
+// 说明：chooseAvatar + input type="nickname" 的"头像昵称填写能力"
+//      仅微信小程序可用；模板以本地缓存保存，跨设备持久化需接入云存储/云函数。
+// ============================================================
+
+const WECHAT_PROFILE_KEY = 'profile_wechat'
+
+export interface WechatProfile {
+  avatarUrl?: string
+  nickName?: string
+}
+
+/**
+ * 读取本地缓存的微信头像昵称
+ */
+export function getWechatProfile(): WechatProfile | null {
+  try {
+    const raw = uni.getStorageSync(WECHAT_PROFILE_KEY)
+    return raw && typeof raw === 'object' ? (raw as WechatProfile) : null
+  }
+  catch {
+    return null
+  }
+}
+
+/**
+ * 保存本地微信头像昵称
+ */
+export function setWechatProfile(profile: WechatProfile) {
+  uni.setStorageSync(WECHAT_PROFILE_KEY, profile)
+}
