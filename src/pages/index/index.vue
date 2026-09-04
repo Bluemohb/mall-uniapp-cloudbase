@@ -3,7 +3,7 @@
   🏠 首页 - 购物小程序第6步（首页整合）
   ============================================================
   这个页面展示了：
-  1. 搜索栏占位（第7步做真正的搜索）
+  1. 搜索栏（点击进入独立搜索页 pages/search/search）
   2. Banner 轮播（swiper + 渐变卡片，无需外部图片）
   3. 分类金刚区（点击跳转商品列表并过滤分类）
   4. 热卖推荐（从 CloudBase products 集合按销量查询）
@@ -110,6 +110,11 @@ async function fetchRecommend() {
 // 事件处理
 // ============================================================
 
+/** 跳转搜索页（搜索框点击） */
+function goSearch() {
+  uni.navigateTo({ url: '/pages/search/search' })
+}
+
 /** 跳转商品列表（tabBar 页用 switchTab） */
 function goProducts() {
   uni.switchTab({ url: '/pages/products/products' })
@@ -138,8 +143,8 @@ onShow(() => {
 
 <template>
   <view class="home-page">
-    <!-- ========== 搜索栏 ========== -->
-    <view class="search-bar" @click="goProducts">
+    <!-- ========== 搜索栏（点击进入搜索页） ========== -->
+    <view class="search-bar" @click="goSearch">
       <view class="search-input">
         <text class="search-icon">🔍</text>
         <text class="search-placeholder">搜索商品</text>

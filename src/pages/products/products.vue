@@ -320,6 +320,15 @@ function goToCart() {
 }
 
 /**
+ * 去搜索页（点击顶部搜索框）
+ */
+function goSearch() {
+  uni.navigateTo({
+    url: '/pages/search/search',
+  })
+}
+
+/**
  * 页面回到顶部
  * 换分类/清除筛选时调用，避免停留在上一次列表的滚动位置
  */
@@ -353,6 +362,14 @@ function clearCategory() {
 -->
 <template>
   <view class="products-page">
+    <!-- 顶部搜索框（点击进入搜索页） -->
+    <view class="search-bar" @click="goSearch">
+      <view class="search-box">
+        <text class="search-icon">🔍</text>
+        <text class="search-placeholder">搜索商品</text>
+      </view>
+    </view>
+
     <!--
       商品卡片网格布局
       使用 flex 布局，每行2列
@@ -441,6 +458,31 @@ function clearCategory() {
   padding: 20rpx;
   background-color: #f5f5f5;
   min-height: 100vh;
+}
+
+/* ========== 顶部搜索框 ========== */
+.search-bar {
+  padding: 4rpx 4rpx 16rpx;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  height: 68rpx;
+  padding: 0 24rpx;
+  background-color: #fff;
+  border-radius: 34rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.search-icon {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.search-placeholder {
+  font-size: 28rpx;
+  color: #bbb;
 }
 
 /* ========== 分类标题 ========== */

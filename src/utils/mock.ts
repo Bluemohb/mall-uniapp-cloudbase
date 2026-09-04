@@ -106,6 +106,40 @@ export function mockGetProductById(id: string): MockProduct | undefined {
   return PRODUCTS.find(p => p._id === id)
 }
 
+/**
+ * 模拟关键词模糊搜索（对应搜索页）
+ * 语义与云端一致：name/category/description 任意字段包含关键词（忽略大小写）
+ * 命中结果按 createTime 倒序 + skip/limit 分页
+ */
+export function mockSearchProducts(options: {
+  keyword: string
+  page?: number
+  pageSize?: number
+}) {
+  const keyword = (options.keyword || '').trim().toLowerCase()
+  const page = options.page || 1
+  const pageSize = options.pageSize || 10
+
+  let list = PRODUCTS
+  if (keyword) {
+    list = PRODUCTS.filter(p =>
+      (p.name || '').toLowerCase().includes(keyword) ||
+      (p.category || '').toLowerCase().includes(keyword) ||
+      (p.description || '').toLowerCase().includes(keyword),
+    )
+  }
+
+  // 按创建时间倒序（新商品在前）
+  list.sort((a, b) => (b.createTime || 0) - (a.createTime || 0))
+
+  const start = (page - 1) * pageSize
+  const data = list.slice(start, start + pageSize)
+  return {
+    data,
+    hasMore: start + pageSize < list.length,
+  }
+}
+
 // 提示当前数据源（仅开发环境打印一次）
 if (USE_MOCK) {
   console.log(`🧪 [Mock] 商品数据源：本地 mock/products_02.json（${PRODUCTS.length} 条）`)

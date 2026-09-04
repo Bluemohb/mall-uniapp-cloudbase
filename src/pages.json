@@ -9,6 +9,15 @@
       }
     },
     {
+      "path": "pages/search/search",
+      "style": {
+        "navigationBarTitleText": "搜索",
+        "navigationBarBackgroundColor": "#667eea",
+        "navigationBarTextStyle": "white",
+        "onReachBottomDistance": 100
+      }
+    },
+    {
       "path": "pages/demo/demo",
       "style": {
         "navigationBarTitleText": "云开发演示",
