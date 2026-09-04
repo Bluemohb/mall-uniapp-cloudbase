@@ -43,6 +43,9 @@ import { ref, reactive, computed } from 'vue'
 // 在 <script setup> 中使用这些钩子时，不能直接写函数名，必须显式 import
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 
+// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+import { USE_MOCK, mockQueryProducts } from '@/utils/mock'
+
 // ============================================================
 // 第2部分：定义数据类型（TypeScript 接口）
 // ============================================================
@@ -142,6 +145,28 @@ async function fetchProducts(isRefresh = false) {
     isRefreshing.value = true
     currentPage.value = 1
     hasMore.value = true
+  }
+
+  // ===== Mock 模式（开发环境，生产构建自动编译为 false 并摇树移除）=====
+  // 语义与云端一致：分类过滤 + createTime 倒序 + skip/limit 分页
+  if (USE_MOCK) {
+    const result = mockQueryProducts({
+      category: categoryFilter.value,
+      page: currentPage.value,
+      pageSize,
+    })
+    const data = result.data as Product[]
+    if (isRefresh) {
+      productList.value = data
+    }
+    else {
+      productList.value = [...productList.value, ...data]
+    }
+    hasMore.value = result.hasMore
+    if (result.hasMore) currentPage.value++
+    isLoading.value = false
+    isRefreshing.value = false
+    return
   }
 
   try {

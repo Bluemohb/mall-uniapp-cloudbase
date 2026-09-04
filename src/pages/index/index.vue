@@ -19,6 +19,9 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
 
+// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+import { USE_MOCK, mockGetRecommend } from '@/utils/mock'
+
 // ============================================================
 // 数据类型
 // ============================================================
@@ -73,6 +76,12 @@ const categories: Category[] = [
  * 这里兜底：失败则按创建时间倒序再试一次
  */
 async function fetchRecommend() {
+  // ===== Mock 模式（开发环境）：按销量 sales 倒序取前 6 件 =====
+  if (USE_MOCK) {
+    recommendList.value = mockGetRecommend(6) as Product[]
+    return
+  }
+
   try {
     const db = app.database()
     const res = await db.collection('products')

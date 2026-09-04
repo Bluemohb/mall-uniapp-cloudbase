@@ -22,6 +22,9 @@
 import { app } from '@/utils/cloudbase'
 import { ref, computed, watch } from 'vue'
 
+// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+import { USE_MOCK, mockGetProductById } from '@/utils/mock'
+
 // 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
 import { onLoad } from '@dcloudio/uni-app'
 
@@ -157,6 +160,32 @@ const isMaxQuantity = computed(() => {
  */
 async function fetchProductDetail(id: string) {
   isLoading.value = true
+
+  // ===== Mock 模式（开发环境）：本地 JSON 按 _id 精确查询 =====
+  if (USE_MOCK) {
+    const p = mockGetProductById(id)
+    if (p) {
+      product.value = p as ProductDetail
+
+      // 初始化规格选择（默认选第一个）
+      if (product.value.specs) {
+        const initial: Record<string, string> = {}
+        product.value.specs.forEach(spec => {
+          if (spec.values.length > 0) {
+            initial[spec.name] = spec.values[0].value
+          }
+        })
+        selectedSpecs.value = initial
+      }
+
+      console.log('📄 [Mock] 商品详情加载成功:', product.value.name)
+    }
+    else {
+      uni.showToast({ title: '商品不存在', icon: 'error' })
+    }
+    isLoading.value = false
+    return
+  }
 
   try {
     const db = app.database()
