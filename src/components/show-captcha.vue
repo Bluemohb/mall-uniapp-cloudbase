@@ -172,7 +172,8 @@ onUnmounted(() => {
                 @error="onImageError"
               />
               <view v-else class="captcha-placeholder">
-                <text>验证码加载中...</text>
+                <!-- 组件 wxss 不允许标签选择器，用 class 承载样式（否则触发编译告警且样式不生效） -->
+                <text class="captcha-placeholder-text">验证码加载中...</text>
               </view>
               <!-- 刷新时的加载动画 -->
               <view v-if="isRefreshing" class="refresh-overlay">
@@ -281,7 +282,7 @@ onUnmounted(() => {
   background: #f9f9f9;
 }
 
-.captcha-placeholder text {
+.captcha-placeholder-text {
   font-size: 14px;
   color: #999;
 }

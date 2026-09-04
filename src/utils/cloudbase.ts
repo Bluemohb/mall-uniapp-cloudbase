@@ -65,16 +65,16 @@ export function checkEnvironment() {
 
 /**
  * 判断当前是否微信小程序环境（运行时判断，多端通用）
+ *
+ * 用「全局 wx 是否存在」探测，而非 uni.getSystemInfoSync().uniPlatform：
+ * wx.getSystemInfoSync 已被官方标记废弃，调用会产生弃用告警，
+ * 且各新 API（getAppBaseInfo / getDeviceInfo）不再返回 uniPlatform 字段。
  */
 export function isMpWeixin(): boolean {
   try {
-    const u = uni as any
-    // uni.getSystemInfoSync 已被官方标记废弃，优先使用拆分后的新 API
-    const info = u.getAppBaseInfo?.() || u.getDeviceInfo?.()
-    if (info?.uniPlatform)
-      return info.uniPlatform === 'mp-weixin'
-    // 低版本 uni-app 兜底
-    return u.getSystemInfoSync?.()?.uniPlatform === 'mp-weixin'
+    // 微信小程序（含开发者工具）环境才存在全局 wx；H5/App/其他小程序构建均无
+    const g = globalThis as any
+    return typeof g.wx !== 'undefined'
   }
   catch {
     return false
