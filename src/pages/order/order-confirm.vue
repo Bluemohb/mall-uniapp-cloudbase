@@ -105,8 +105,12 @@
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { app, login } from '@/utils/cloudbase'
-import { generateOrderNo   } from '@/utils/order'
+import { generateOrderNo } from '@/utils/order'
 import type { OrderItem, OrderAddress } from '@/utils/order'
+
+// Mock 数据层：开发环境订单落本地，生产构建自动禁用（走云端 orders 集合）
+import { USE_MOCK } from '@/utils/mock'
+import { MOCK_USER_ID, mockCreateOrder } from '@/utils/order-mock'
 
 // ============================================================
 // 响应式数据
@@ -295,16 +299,10 @@ async function submitOrder() {
   uni.showLoading({ title: '正在提交...', mask: true })
 
   try {
-    // ---- 2. 获取用户ID ----
-    const uid = await getUserId()
-    if (!uid) {
-      throw new Error('未获取到用户ID')
-    }
-
-    // ---- 3. 组装订单数据 ----
+    // ---- 2. 组装订单数据 ----
     const orderData = {
       orderNo: generateOrderNo(),             // 业务订单号
-      userId: uid,                            // 归属用户
+      userId: '',                             // 归属用户（mock/云端分支分别赋值）
       items: items.value,                     // 商品快照
       address: selectedAddress.value,         // 地址快照
       totalPrice: Number(totalPrice.value.toFixed(2)), // 金额保留两位
@@ -314,12 +312,35 @@ async function submitOrder() {
       updatedAt: Date.now(),
     }
 
-    // ---- 4. 写入数据库 ----
-    // 【知识点】collection.add(对象) 插入单条，返回 { id: 新文档ID }
-    // ⚠️ 生产环境注意：真实项目应在云函数中校验金额/扣库存，
-    //    防止用户篡改价格。这里先直连数据库便于学习。
-    const res: any = await app.database().collection('orders').add(orderData)
-    const orderId = res?.id || res?._id
+    // ---- 4. 写入订单 ----
+    let orderId = ''
+
+    if (USE_MOCK) {
+      // ===== Mock 模式（开发环境）：订单落本地，不依赖云端登录态 =====
+      orderData.userId = MOCK_USER_ID
+      const order = mockCreateOrder(orderData)
+      orderId = order._id
+    }
+    else {
+      // ===== 云端模式（生产构建）：写入 orders 集合 =====
+      const uid = await getUserId()
+      if (!uid) {
+        throw new Error('未获取到用户ID')
+      }
+      orderData.userId = uid
+
+      // 【知识点】collection.add(对象) 插入单条，返回 { id: 新文档ID }
+      // ⚠️ 生产环境注意：真实项目应在云函数中校验金额/扣库存，
+      //    防止用户篡改价格。这里先直连数据库便于学习。
+      // ⚠️ AddRes 可能携带 code/message（写入被拒绝等），无 id 时必须判失败，
+      //    不能把"假成功"当成功继续跳转，否则详情页必然查不到订单。
+      const res: any = await app.database().collection('orders').add(orderData)
+      orderId = res?.id || res?.ids?.[0] || res?.insertedIds?.[0] || ''
+      if (!orderId || res?.code) {
+        console.error('订单写入返回异常:', res)
+        throw new Error(res?.message || '订单写入失败，请重试')
+      }
+    }
 
     // ---- 5. 清理数据 ----
     if (from.value === 'cart') {

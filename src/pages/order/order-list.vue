@@ -98,6 +98,10 @@ import { app, login } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
 import { ORDER_STATUS_MAP, type Order, type OrderStatus } from '@/utils/order'
 
+// Mock 数据层：开发环境订单读本地，生产构建自动禁用（走云端 orders 集合）
+import { USE_MOCK } from '@/utils/mock'
+import { mockQueryOrders, mockUpdateOrder } from '@/utils/order-mock'
+
 // ============================================================
 // 状态筛选 tab 定义
 // ============================================================
@@ -183,6 +187,26 @@ async function getUserId(): Promise<string> {
  * 第二页：skip(10).limit(10)
  */
 async function fetchOrders() {
+  // ===== Mock 模式（开发环境）：读本地订单，无需登录态 =====
+  if (USE_MOCK) {
+    const result = mockQueryOrders({
+      status: activeStatus.value,
+      page: page.value + 1,
+      pageSize,
+    })
+    const list = (result.data as Order[]) || []
+    hasMore.value = result.hasMore
+    if (page.value === 0) {
+      orders.value = list
+    }
+    else {
+      const existIds = new Set(orders.value.map(o => o._id))
+      const newItems = list.filter(o => !existIds.has(o._id))
+      orders.value = [...orders.value, ...newItems]
+    }
+    return
+  }
+
   const uid = await getUserId()
   if (!uid) {
     console.warn('未获取到用户ID')
@@ -278,11 +302,17 @@ function payOrder(order: Order) {
     success: async (res) => {
       if (!res.confirm || !order._id) return
       try {
-        await app.database().collection('orders').doc(order._id).update({
-          status: 'paid',
+        const patch = {
+          status: 'paid' as const,
           paidAt: Date.now(),
           updatedAt: Date.now(),
-        })
+        }
+        if (USE_MOCK) {
+          mockUpdateOrder(order._id, patch)
+        }
+        else {
+          await app.database().collection('orders').doc(order._id).update(patch)
+        }
         uni.showToast({ title: '支付成功', icon: 'success' })
         // 本地更新状态，无需重新请求
         order.status = 'paid'
@@ -302,10 +332,16 @@ function cancelOrder(order: Order) {
     success: async (res) => {
       if (!res.confirm || !order._id) return
       try {
-        await app.database().collection('orders').doc(order._id).update({
-          status: 'cancelled',
+        const patch = {
+          status: 'cancelled' as const,
           updatedAt: Date.now(),
-        })
+        }
+        if (USE_MOCK) {
+          mockUpdateOrder(order._id, patch)
+        }
+        else {
+          await app.database().collection('orders').doc(order._id).update(patch)
+        }
         uni.showToast({ title: '已取消', icon: 'success' })
         order.status = 'cancelled'
       } catch (error) {

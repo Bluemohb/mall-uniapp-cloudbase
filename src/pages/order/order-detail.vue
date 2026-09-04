@@ -128,6 +128,10 @@ import { app } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
 import { ORDER_STATUS_MAP, type Order, type OrderStatus } from '@/utils/order'
 
+// Mock 数据层：开发环境订单读本地，生产构建自动禁用（走云端 orders 集合）
+import { USE_MOCK } from '@/utils/mock'
+import { mockGetOrderById, mockUpdateOrder } from '@/utils/order-mock'
+
 // ============================================================
 // 响应式数据
 // ============================================================
@@ -193,6 +197,11 @@ onLoad((options: any) => {
 async function fetchOrderDetail(id: string) {
   loading.value = true
   try {
+    // ===== Mock 模式（开发环境）：读本地订单 =====
+    if (USE_MOCK) {
+      order.value = mockGetOrderById(id)
+      return
+    }
     const { data } = await app.database().collection('orders').doc(id).get()
     order.value = (data && data[0]) as Order || null
   } catch (error) {
@@ -221,7 +230,17 @@ async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
       updatedAt: Date.now(),
       ...extra,
     }
-    await app.database().collection('orders').doc(orderId.value).update(updateData)
+
+    // ===== Mock 模式（开发环境）：更新本地订单 =====
+    if (USE_MOCK) {
+      const updated = mockUpdateOrder(orderId.value, updateData)
+      if (!updated) {
+        throw new Error('订单不存在')
+      }
+    }
+    else {
+      await app.database().collection('orders').doc(orderId.value).update(updateData)
+    }
 
     // 本地同步更新，避免重新请求
     order.value = { ...order.value!, ...updateData }
