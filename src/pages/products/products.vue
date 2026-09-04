@@ -277,10 +277,13 @@ onShow(() => {
   }
   const category = typeof raw === 'string' ? raw : ''
   if (category !== categoryFilter.value) {
+    // 从不同分类进入：数据与页面位置都需要"换新"
+    // （tabBar 页面不销毁，滚动位置会被保留，必须显式回顶）
     categoryFilter.value = category
     productList.value = []
     currentPage.value = 1
     hasMore.value = true
+    scrollToTop()
     fetchProducts()
   }
   else if (productList.value.length === 0) {
@@ -317,6 +320,14 @@ function goToCart() {
 }
 
 /**
+ * 页面回到顶部
+ * 换分类/清除筛选时调用，避免停留在上一次列表的滚动位置
+ */
+function scrollToTop() {
+  uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+}
+
+/**
  * 清除分类筛选
  */
 function clearCategory() {
@@ -325,6 +336,7 @@ function clearCategory() {
   productList.value = []
   currentPage.value = 1
   hasMore.value = true
+  scrollToTop()
   fetchProducts()
 }
 </script>
