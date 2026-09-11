@@ -6,8 +6,9 @@ trustPolicy: no-downgrade
 # 与运行时/编译产物无关。只放行这一个精确版本，不放行整个包名。
 trustPolicyExclude:
   - semver@6.3.1
-patchedDependencies:
-  '@dcloudio/uni-ui': patches/@dcloudio__uni-ui.patch
+# 已临时停用 uni-ui 补丁（补丁文件保留在 patches/，需要恢复时去掉下面两行的注释即可）
+# patchedDependencies:
+#   '@dcloudio/uni-ui': patches/@dcloudio__uni-ui.patch
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
