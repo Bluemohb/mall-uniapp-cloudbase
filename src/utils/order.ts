@@ -11,8 +11,11 @@
  *  - 类型定义：把接口写在独立模块里，页面之间可以复用
  *  - TS 联合类型：type OrderStatus = 'pending' | 'paid' | ...
  *  - Record<K, V>：以联合类型为 key，构造"状态 → 展示信息"映射表
+ *  - 云端写操作（创建订单 / 改状态）统一走云函数，服务端做校验
  * ============================================================
  */
+import { app } from './cloudbase'
+import { toCents } from './money'
 
 /**
  * 订单状态流转图：
@@ -73,6 +76,7 @@ export interface Order {
   items: OrderItem[]    // 商品快照列表
   address: OrderAddress // 地址快照
   totalPrice: number    // 应付总金额（元）
+  totalPriceCents?: number // 应付总金额（分，服务端下发，金额展示以此为准）
   status: OrderStatus   // 订单状态
   remark?: string       // 用户备注（选填）
   createdAt: number     // 下单时间（时间戳）
@@ -92,4 +96,56 @@ export function generateOrderNo(): string {
   const dateStr = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
   const random = Math.floor(Math.random() * 9000 + 1000)
   return `${dateStr}${random}`
+}
+
+/**
+ * 取订单应付金额（分）
+ * 优先用服务端下发的 totalPriceCents；历史订单没有该字段时由 totalPrice 兜底换算。
+ */
+export function orderAmountCents(order: Pick<Order, 'totalPriceCents' | 'totalPrice'>): number {
+  return typeof order.totalPriceCents === 'number'
+    ? order.totalPriceCents
+    : toCents(order.totalPrice)
+}
+
+/** 创建订单的请求体（客户端只提供商品ID/数量/规格，价格由服务端确定） */
+export interface CreateOrderPayload {
+  items: Array<{ productId: string, quantity: number, specs: string }>
+  address: OrderAddress
+  remark?: string
+}
+
+/** 云函数统一返回结构 */
+interface CloudFnResult {
+  success: boolean
+  message?: string
+  code?: string
+  orderId?: string
+}
+
+/**
+ * 调用云函数创建订单（服务端定价 + 校验）
+ * @returns 新建订单的文档 _id
+ */
+export async function createOrderViaCloud(payload: CreateOrderPayload): Promise<string> {
+  const res = await app.callFunction({ name: 'createOrder', data: payload })
+  const result = (res?.result ?? {}) as CloudFnResult
+  if (!result.success || !result.orderId) {
+    throw new Error(result.message || '订单创建失败')
+  }
+  return result.orderId
+}
+
+/**
+ * 调用云函数更新订单状态（服务端校验归属 + 状态流转）
+ */
+export async function updateOrderStatusViaCloud(orderId: string, status: OrderStatus): Promise<void> {
+  const res = await app.callFunction({
+    name: 'updateOrderStatus',
+    data: { orderId, status },
+  })
+  const result = (res?.result ?? {}) as CloudFnResult
+  if (!result.success) {
+    throw new Error(result.message || '订单状态更新失败')
+  }
 }

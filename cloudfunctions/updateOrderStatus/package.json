@@ -1,0 +1,9 @@
+{
+  "name": "updateOrderStatus",
+  "version": "1.0.0",
+  "description": "更新订单状态云函数：服务端校验归属与状态流转合法性",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.7.0"
+  }
+}

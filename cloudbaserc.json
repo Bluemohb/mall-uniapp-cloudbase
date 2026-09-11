@@ -16,6 +16,24 @@
       "envVariables": {
         "NODE_ENV": "production"
       }
+    },
+    {
+      "name": "createOrder",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 15,
+      "envVariables": {
+        "NODE_ENV": "production"
+      }
+    },
+    {
+      "name": "updateOrderStatus",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 15,
+      "envVariables": {
+        "NODE_ENV": "production"
+      }
     }
   ]
 }
