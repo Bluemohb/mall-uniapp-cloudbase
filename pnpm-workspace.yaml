@@ -1,6 +1,11 @@
 shellEmulator: true
 
 trustPolicy: no-downgrade
+# 精确放行：semver@6.3.1 是 2023 年发布的历史版本（发布时无 provenance 流程），
+# 由 @dcloudio/uni-cli-shared 的 jest@27 测试工具链经 @jest/reporters 传递引入，
+# 与运行时/编译产物无关。只放行这一个精确版本，不放行整个包名。
+trustPolicyExclude:
+  - semver@6.3.1
 patchedDependencies:
   '@dcloudio/uni-ui': patches/@dcloudio__uni-ui.patch
 
