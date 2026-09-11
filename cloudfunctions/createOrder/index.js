@@ -19,10 +19,19 @@
  *
  * 【orders 集合安全规则建议（在控制台配置）】
  *   读：仅订单归属者可读
- *     { "read": "doc.userId == auth.uid" }
+ *     { "read": "auth.uid != null && doc.userId == auth.uid" }
  *   写：客户端一律不可写，只能由云函数（管理端权限）写入
  *     { "write": false }
  *   这样即使有人绕过 UI 直接调 db.collection('orders').add()，也会被拒绝。
+ *
+ *   【为什么 read 必须带 auth.uid != null？】
+ *   只写 doc.userId == auth.uid 时：若 auth.uid 为 null（未登录，或用公开的
+ *   Publishable Key 直接发 REST 请求，此时没有会话），而集合里恰好有一条
+ *   缺 userId 的文档，则 null == null 判真 → 静默越权读到该订单，
+ *   规则引擎不报错、不留日志。
+ *   本函数虽然保证写入时带 userId，但安全规则应自身闭环，
+ *   不依赖"上游数据永不脏"。加上该守卫不引入任何额外的查询条件要求，
+ *   客户端现有的 where({ userId }) 查询无需改动。
  *
  * 【云函数安全规则（必须配置，否则 H5 / 匿名端下单会被网关拦掉）】
  *   微信小程序端用户是 OpenID 身份，通常不受影响；
