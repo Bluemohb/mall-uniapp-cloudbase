@@ -14,6 +14,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { auth, ensureLogin, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
+import { resetCartUid } from '../../utils/cart'
 import { getWechatProfile, setWechatProfile } from '../../utils/index'
 
 const userInfo = ref<any>(null)
@@ -52,19 +53,6 @@ function isPhoneIdentity(item: any) {
   return identityValues(item).some(v => v.toLowerCase().includes('phone'))
 }
 
-/** 身份徽章文案 */
-const identityLabel = computed(() => {
-  if (isAnonymous.value)
-    return '匿名用户'
-  if (hasBoundWechat.value)
-    return '微信用户'
-  if (hasBoundPhone.value)
-    return '手机号用户'
-  if (userInfo.value?.email)
-    return '邮箱用户'
-  return '正式用户'
-})
-
 /** 是否已绑定手机号 */
 const hasBoundPhone = computed(() => {
   if (userInfo.value?.phone)
@@ -96,6 +84,19 @@ const hasBoundWechat = computed(() => {
   if (identities.value.some(isWechatIdentity))
     return true
   return isWeixin.value && !isAnonymous.value && identities.value.length > 0
+})
+
+/** 身份徽章文案（依赖上面的 hasBoundWechat / hasBoundPhone，故定义在其后） */
+const identityLabel = computed(() => {
+  if (isAnonymous.value)
+    return '匿名用户'
+  if (hasBoundWechat.value)
+    return '微信用户'
+  if (hasBoundPhone.value)
+    return '手机号用户'
+  if (userInfo.value?.email)
+    return '邮箱用户'
+  return '正式用户'
 })
 
 /** 头像：本地微信头像优先，其次服务端 metadata */
@@ -253,7 +254,7 @@ function formatDate(timestamp: number | string) {
   try {
     let date: Date
     if (timestamp.toString().length === 10)
-      date = new Date(timestamp * 1000)
+      date = new Date(Number(timestamp) * 1000)
     else
       date = new Date(timestamp)
 
@@ -294,6 +295,8 @@ async function handleLogout() {
       if (res.confirm) {
         try {
           await logout()
+          // 清除购物车用户标识，避免下次登录读到上一个账号的购物车
+          resetCartUid()
           session.value = null
           userInfo.value = null
           uni.showToast({
@@ -388,7 +391,7 @@ async function handleWechatRow() {
     if (hasBoundWechat.value) {
       uni.showToast({ title: '已绑定微信', icon: 'success' })
       // 绑定成功后可顺手完善头像昵称
-      setTimeout(() => openWechatProfileSheet(), 600)
+      setTimeout(openWechatProfileSheet, 600)
     }
     else {
       uni.showToast({ title: '绑定失败，请稍后重试', icon: 'none' })

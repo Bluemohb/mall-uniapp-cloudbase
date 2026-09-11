@@ -7,6 +7,7 @@ import {
   initCloudBase,
   logout,
 } from '../../utils/cloudbase'
+import { resetCartUid } from '../../utils/cart'
 
 // 响应式数据
 const loading = ref(false)
@@ -100,6 +101,8 @@ async function handleLogout() {
   loading.value = true
   try {
     await logout()
+    // 清除购物车用户标识，避免下次登录读到上一个账号的购物车
+    resetCartUid()
     loginStatus.value = '已退出'
     uni.showToast({ title: '已退出登录', icon: 'success' })
   }
@@ -143,7 +146,9 @@ async function callCloudRunFunction() {
   }
   loading.value = true
   try {
-    const result = await app.callFunction({
+    // 调用云托管服务的 method / type / path / header 参数
+    // 目前未包含在 SDK 的 ICallFunctionOptions 类型定义中，这里显式收窄一次（不使用 any）
+    const callOptions = {
       name: 'express',
       method: 'GET', // 使用 GET 方法调用云托管服务
       type: 'cloudrun', // 指定调用云托管服务
@@ -153,7 +158,9 @@ async function callCloudRunFunction() {
         key1: 'test value 1',
         key2: 'test value 2',
       },
-    })
+    } as unknown as Parameters<typeof app.callFunction>[0]
+
+    const result = await app.callFunction(callOptions)
     cloudrunResult.value = JSON.stringify(result.result, null, 2)
     uni.showToast({ title: '调用成功', icon: 'success' })
   }

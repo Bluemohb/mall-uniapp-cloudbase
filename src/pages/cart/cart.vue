@@ -66,7 +66,7 @@
               <text class="item-name">{{ item.name }}</text>
               <text v-if="item.specs" class="item-specs">{{ item.specs }}</text>
               <view class="item-bottom">
-                <text class="item-price">¥{{ item.price.toFixed(2) }}</text>
+                <text class="item-price">¥{{ formatMoney(item.price) }}</text>
                 <view class="qty-control">
                   <view
                     class="qty-btn"
@@ -109,7 +109,7 @@
         <view class="footer-right">
           <view v-if="!isEditMode" class="total-info">
             <text class="total-label">合计：</text>
-            <text class="total-price">¥{{ totalPrice.toFixed(2) }}</text>
+            <text class="total-price">¥{{ totalPriceText }}</text>
           </view>
           <view
             v-if="!isEditMode"
@@ -136,21 +136,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-
-// ============================================================
-// 类型定义
-// ============================================================
-
-interface CartItem {
-  productId: string
-  name: string
-  image: string
-  price: number
-  specs: string
-  quantity: number
-  selected: boolean
-  addTime: number
-}
+import { formatCents, formatMoney, calcTotalCents } from '@/utils/money'
+import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
+import type { CartItem } from '@/utils/cart'
 
 // ============================================================
 // 响应式数据
@@ -167,32 +155,36 @@ const selectedCount = computed(() =>
   cartList.value.filter(item => item.selected).reduce((sum, item) => sum + item.quantity, 0),
 )
 
-const totalPrice = computed(() =>
-  cartList.value
-    .filter(item => item.selected)
-    .reduce((sum, item) => sum + item.price * item.quantity, 0),
+/** 已选商品合计（分）：整数运算，避免浮点误差 */
+const totalCents = computed(() =>
+  calcTotalCents(cartList.value.filter(item => item.selected)),
 )
+
+/** 合计金额展示文本（元，两位小数） */
+const totalPriceText = computed(() => formatCents(totalCents.value))
 
 const isAllSelected = computed(() =>
   cartList.value.length > 0 && cartList.value.every(item => item.selected),
 )
 
 // ============================================================
-// 数据加载与持久化
+// 数据加载与持久化（按用户隔离，见 utils/cart.ts）
 // ============================================================
 
-function loadCartData() {
+async function loadCartData() {
   try {
-    const stored = uni.getStorageSync('cart_list')
-    cartList.value = stored || []
-  } catch (error) {
+    // 先解析 uid，确保读写的是「当前用户」的购物车 key，避免多账号串号
+    await ensureCartUid()
+    cartList.value = readCart()
+  }
+  catch (error) {
     console.error('加载购物车数据失败:', error)
     cartList.value = []
   }
 }
 
 watch(cartList, () => {
-  uni.setStorageSync('cart_list', cartList.value)
+  writeCart(cartList.value)
 }, { deep: true })
 
 // ============================================================
@@ -273,7 +265,7 @@ function goCheckout() {
 // ============================================================
 
 onShow(() => {
-  loadCartData()
+  void loadCartData()
 })
 </script>
 

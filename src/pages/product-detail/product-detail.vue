@@ -25,6 +25,11 @@ import { ref, computed, watch } from 'vue'
 // Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
 import { USE_MOCK, mockGetProductById } from '@/utils/mock'
 
+// 金额格式化 + 按用户隔离的购物车存储
+import { formatMoney } from '@/utils/money'
+import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
+import type { CartItem } from '@/utils/cart'
+
 // 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
 import { onLoad } from '@dcloudio/uni-app'
 
@@ -59,6 +64,17 @@ interface ProductSpec {
 interface SpecValue {
   label: string          // 显示文本，如"黑色"、"XL"
   value: string          // 实际值
+  price?: number         // 该规格单独定价（选填；不填则用商品基础价）
+}
+
+/** 轮播切换事件（只声明用到的字段） */
+interface SwiperChangeEvent {
+  detail: { current: number }
+}
+
+/** 商品详情页路由参数 */
+interface ProductDetailQuery {
+  id?: string
 }
 
 // ============================================================
@@ -94,10 +110,36 @@ const isAddingToCart = ref(false)
 // ============================================================
 
 /**
- * 当前显示的商品价格
- * 暂时直接用 product.price，后续规格影响价格时可扩展
+ * 当前显示的商品价格（元）
+ *
+ * 规则：先取商品基础价；若所选规格值带单独定价（SpecValue.price），
+ * 则以规格价为准 —— 这样切换规格时价格会实时变化，与结算价一致。
  */
-const displayPrice = computed(() => product.value?.price ?? 0)
+const displayPrice = computed(() => {
+  let price = product.value?.price ?? 0
+  const specs = product.value?.specs
+  if (specs) {
+    for (const spec of specs) {
+      const selected = selectedSpecs.value[spec.name]
+      const matched = spec.values.find(v => v.value === selected)
+      if (matched && typeof matched.price === 'number') {
+        price = matched.price
+      }
+    }
+  }
+  return price
+})
+
+/** 价格展示文本（元，两位小数） */
+const displayPriceText = computed(() => formatMoney(displayPrice.value))
+
+/** 划线原价展示文本；无折扣时为空串（模板据此隐藏） */
+const originalPriceText = computed(() => {
+  const original = product.value?.originalPrice
+  if (typeof original !== 'number' || original <= displayPrice.value)
+    return ''
+  return `¥${formatMoney(original)}`
+})
 
 /**
  * 是否所有规格都已选择
@@ -139,11 +181,19 @@ const imageList = computed(() => {
 
 /**
  * 是否达到最大购买数量（库存限制）
+ *
+ * ⚠️ 注意区分「未设置库存」与「库存为 0」：
+ * - undefined / null → 视为不限购
+ * - 0 → 已售罄，数量已达上限（原实现用 !stock 判断，会把 0 误判为"不限购"）
  */
 const isMaxQuantity = computed(() => {
-  if (!product.value?.stock) return false
-  return quantity.value >= product.value.stock
+  const stock = product.value?.stock
+  if (typeof stock !== 'number') return false
+  return quantity.value >= stock
 })
+
+/** 是否已售罄（库存为 0） */
+const isSoldOut = computed(() => product.value?.stock === 0)
 
 // ============================================================
 // 第5部分：数据查询
@@ -257,11 +307,17 @@ function decreaseQuantity() {
  * 增加数量（不超过库存）
  */
 function increaseQuantity() {
-  if (product.value?.stock && quantity.value >= product.value.stock) {
-    uni.showToast({ title: '库存不足', icon: 'none' })
+  const stock = product.value?.stock
+  if (typeof stock === 'number' && quantity.value >= stock) {
+    uni.showToast({ title: stock === 0 ? '该商品已售罄' : '库存不足', icon: 'none' })
     return
   }
   quantity.value++
+}
+
+/** 轮播切换：更新当前图片索引 */
+function onSwiperChange(e: SwiperChangeEvent) {
+  currentImageIndex.value = e.detail.current
 }
 
 /**
@@ -298,38 +354,38 @@ async function addToCart() {
   isAddingToCart.value = true
 
   try {
-    // 构造购物车商品对象
-    const cartItem = {
+    // 构造购物车商品对象（价格取 displayPrice，与所选规格保持一致）
+    const cartItem: CartItem = {
       productId: product.value!._id,
       name: product.value!.name,
       image: product.value!.image,
-      price: product.value!.price,
+      price: displayPrice.value,
       specs: selectedSpecsText.value,   // 如 "黑色 / XL"
       quantity: quantity.value,
       selected: true,                   // 购物车中默认勾选
       addTime: Date.now(),
     }
 
-    // 从本地存储读取现有购物车
-    const cartList = uni.getStorageSync('cart_list') || []
+    // 购物车按用户隔离：先解析 uid，再读写 `cart_<uid>`
+    await ensureCartUid()
+    const cartList = readCart()
 
     // 查找购物车中是否已有同商品同规格的项
     const existIndex = cartList.findIndex(
-      (item: any) =>
-        item.productId === cartItem.productId
-        && item.specs === cartItem.specs
+      item => item.productId === cartItem.productId && item.specs === cartItem.specs,
     )
 
     if (existIndex !== -1) {
       // 已存在：累加数量
       cartList[existIndex].quantity += quantity.value
-    } else {
+    }
+    else {
       // 不存在：新增
       cartList.push(cartItem)
     }
 
     // 写回本地存储
-    uni.setStorageSync('cart_list', cartList)
+    writeCart(cartList)
 
     uni.showToast({
       title: '已加入购物车',
@@ -364,7 +420,7 @@ function buyNow() {
     productId: product.value._id,
     name: product.value.name,
     image: product.value.image,
-    price: product.value.price,
+    price: displayPrice.value,        // 与所选规格一致的价格
     specs: selectedSpecsText.value,   // 如 "黑色 / XL"
     quantity: quantity.value,
   }
@@ -395,11 +451,12 @@ function goToCart() {
  *   uni.navigateTo({ url: `/pages/product-detail/product-detail?id=${product._id}` })
  * 这里 options.id 就能获取到商品ID
  */
-onLoad((options: any) => {
+onLoad((options?: ProductDetailQuery) => {
   if (options?.id) {
     productId.value = options.id
     fetchProductDetail(options.id)
-  } else {
+  }
+  else {
     uni.showToast({ title: '参数错误', icon: 'error' })
   }
 })
@@ -434,7 +491,7 @@ onLoad((options: any) => {
         :circular="true"
         indicator-color="rgba(255,255,255,0.5)"
         indicator-active-color="#667eea"
-        @change="(e: any) => currentImageIndex = e.detail.current"
+        @change="onSwiperChange"
       >
         <swiper-item
           v-for="(img, index) in imageList"
@@ -452,12 +509,9 @@ onLoad((options: any) => {
       <view class="basic-info">
         <!-- 价格行 -->
         <view class="price-section">
-          <text class="price">¥{{ displayPrice }}</text>
-          <text
-            v-if="product.originalPrice && product.originalPrice > product.price"
-            class="original-price"
-          >
-            ¥{{ product.originalPrice }}
+          <text class="price">¥{{ displayPriceText }}</text>
+          <text v-if="originalPriceText" class="original-price">
+            {{ originalPriceText }}
           </text>
         </view>
 
@@ -472,8 +526,8 @@ onLoad((options: any) => {
           <text v-if="product.rating" class="meta-item rating">
             ★ {{ product.rating }}
           </text>
-          <text v-if="product.stock" class="meta-item">
-            库存 {{ product.stock }}
+          <text v-if="typeof product.stock === 'number'" class="meta-item">
+            {{ isSoldOut ? '已售罄' : `库存 ${product.stock}` }}
           </text>
         </view>
       </view>
@@ -549,19 +603,19 @@ onLoad((options: any) => {
       <!-- 加入购物车按钮 -->
       <button
         class="btn-cart"
-        :disabled="!allSpecsSelected"
+        :disabled="!allSpecsSelected || isSoldOut"
         @click="addToCart"
       >
-        加入购物车
+        {{ isSoldOut ? '已售罄' : '加入购物车' }}
       </button>
 
       <!-- 立即购买按钮 -->
       <button
         class="btn-buy"
-        :disabled="!allSpecsSelected"
+        :disabled="!allSpecsSelected || isSoldOut"
         @click="buyNow"
       >
-        立即购买
+        {{ isSoldOut ? '已售罄' : '立即购买' }}
       </button>
     </view>
   </view>
