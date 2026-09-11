@@ -21,7 +21,7 @@ import { ref, computed } from 'vue'
 import { onLoad, onReachBottom } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
 
-// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+// Mock 数据层：由全局开关 USE_MOCK 控制（见 src/utils/mock.ts）
 import { USE_MOCK, mockSearchProducts } from '@/utils/mock'
 
 // ============================================================

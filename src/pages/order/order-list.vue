@@ -105,8 +105,8 @@ import {
 } from '@/utils/order'
 import { formatCents } from '@/utils/money'
 
-// Mock 数据层：开发环境订单读本地，生产构建自动禁用（走云端 orders 集合）
-import { USE_MOCK } from '@/utils/mock'
+// Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
+import { USE_ORDER_MOCK } from '@/utils/mock'
 import { mockQueryOrders, mockUpdateOrder } from '@/utils/order-mock'
 
 // ============================================================
@@ -187,8 +187,8 @@ onReachBottom(() => {
  * 第二页：skip(10).limit(10)
  */
 async function fetchOrders() {
-  // ===== Mock 模式（开发环境）：读本地订单，无需登录态 =====
-  if (USE_MOCK) {
+  // ===== Mock 模式（USE_ORDER_MOCK）：读本地订单，无需登录态 =====
+  if (USE_ORDER_MOCK) {
     const result = mockQueryOrders({
       status: activeStatus.value,
       page: page.value + 1,
@@ -304,7 +304,7 @@ function payOrder(order: Order) {
     success: async (res) => {
       if (!res.confirm || !order._id) return
       try {
-        if (USE_MOCK) {
+        if (USE_ORDER_MOCK) {
           mockUpdateOrder(order._id, {
             status: 'paid',
             paidAt: Date.now(),
@@ -335,7 +335,7 @@ function cancelOrder(order: Order) {
     success: async (res) => {
       if (!res.confirm || !order._id) return
       try {
-        if (USE_MOCK) {
+        if (USE_ORDER_MOCK) {
           mockUpdateOrder(order._id, {
             status: 'cancelled',
             updatedAt: Date.now(),

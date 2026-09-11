@@ -111,8 +111,8 @@ import { calcTotalCents, formatCents, formatMoney, toYuan } from '@/utils/money'
 import { CACHE_KEYS, getCache, setCache } from '@/utils/cache'
 import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
 
-// Mock 数据层：开发环境订单落本地，生产构建自动禁用（走云端 orders 集合）
-import { USE_MOCK } from '@/utils/mock'
+// Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
+import { USE_ORDER_MOCK } from '@/utils/mock'
 import { MOCK_USER_ID, mockCreateOrder } from '@/utils/order-mock'
 
 /** 本页路由参数 */
@@ -288,8 +288,8 @@ async function submitOrder() {
     // ---- 2. 下单 ----
     let orderId = ''
 
-    if (USE_MOCK) {
-      // ===== Mock 模式（开发环境）：订单落本地，不依赖云端登录态 =====
+    if (USE_ORDER_MOCK) {
+      // ===== Mock 模式（USE_ORDER_MOCK）：订单落本地，不依赖云端登录态 =====
       const orderData = {
         orderNo: generateOrderNo(),
         userId: MOCK_USER_ID,
@@ -352,9 +352,9 @@ async function submitOrder() {
 }
 
 /**
- * 从本地购物车中移除本次已下单的商品
+ * 从购物车中移除本次已下单的商品
  * 匹配条件：productId + specs 都相同（和加入购物车的去重逻辑一致）
- * 使用按用户隔离的购物车 key（cart.ts），不再直接读写全局 cart_list
+ * 购物车读写统一走 cart.ts（本地镜像 + 云端 carts 集合），不再直接读写 storage
  */
 function removePurchasedFromCart() {
   const cartList = readCart()

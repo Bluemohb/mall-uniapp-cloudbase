@@ -135,8 +135,8 @@ import {
 } from '@/utils/order'
 import { formatCents, formatMoney } from '@/utils/money'
 
-// Mock 数据层：开发环境订单读本地，生产构建自动禁用（走云端 orders 集合）
-import { USE_MOCK } from '@/utils/mock'
+// Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
+import { USE_ORDER_MOCK } from '@/utils/mock'
 import { mockGetOrderById, mockUpdateOrder } from '@/utils/order-mock'
 
 /** 订单详情页路由参数 */
@@ -204,7 +204,7 @@ onLoad((options?: OrderDetailQuery) => {
  * 查询订单详情
  *
  * 【为什么不用 doc(id).get()？】
- * orders 集合安全规则是 { "read": "doc.userId == auth.uid" }，
+ * orders 集合安全规则是 { "read": "auth.uid != null && doc.userId == auth.uid" }，
  * CloudBase 会做「查询条件子集校验」：查询必须自带能覆盖安全规则的条件，
  * 只按 _id 查询（doc(id).get() / where({_id})）会被直接拒绝，
  * 客户端只会看到一条难以理解的报错（formatResDocumentData 崩溃）。
@@ -213,8 +213,8 @@ onLoad((options?: OrderDetailQuery) => {
 async function fetchOrderDetail(id: string) {
   loading.value = true
   try {
-    // ===== Mock 模式（开发环境）：读本地订单 =====
-    if (USE_MOCK) {
+    // ===== Mock 模式（USE_ORDER_MOCK）：读本地订单 =====
+    if (USE_ORDER_MOCK) {
       order.value = mockGetOrderById(id)
       return
     }
@@ -249,8 +249,8 @@ async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
   try {
     const updatedAt = Date.now()
 
-    if (USE_MOCK) {
-      // ===== Mock 模式（开发环境）：更新本地订单 =====
+    if (USE_ORDER_MOCK) {
+      // ===== Mock 模式（USE_ORDER_MOCK）：更新本地订单 =====
       const updated = mockUpdateOrder(orderId.value, {
         status,
         updatedAt,

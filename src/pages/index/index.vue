@@ -23,7 +23,7 @@ import { app } from '@/utils/cloudbase'
 // 必须显式引入，由 <script setup> 自动注册到本页面
 import GoodsCard from '@/components/goods-card/goods-card.vue'
 
-// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+// Mock 数据层：由全局开关 USE_MOCK 控制（见 src/utils/mock.ts）
 import { USE_MOCK, mockGetRecommend } from '@/utils/mock'
 
 // ============================================================

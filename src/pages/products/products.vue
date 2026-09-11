@@ -43,7 +43,7 @@ import { ref, reactive, computed } from 'vue'
 // 在 <script setup> 中使用这些钩子时，不能直接写函数名，必须显式 import
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 
-// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+// Mock 数据层：由全局开关 USE_MOCK 控制（见 src/utils/mock.ts）
 import { USE_MOCK, mockQueryProducts } from '@/utils/mock'
 
 // 商品卡片公共组件：本项目的 easycom 自动扫描未生效（编译产物里组件未被注册），

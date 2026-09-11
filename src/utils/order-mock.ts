@@ -1,13 +1,16 @@
 /**
  * ============================================================
- * 📦 订单 Mock 数据层（开发环境专用）
+ * 📦 订单 Mock 数据层（由 USE_ORDER_MOCK 控制）
  * ============================================================
  * 用途：
- * - 开发环境（pnpm dev:*，USE_MOCK === true）订单落本地 storage，
- *   与 products 的 Mock 策略一致：不依赖云端集合/安全规则，
- *   即可完整演示「提交订单 → 订单详情 → 我的订单」闭环与状态流转。
- * - 生产构建（pnpm build:*，USE_MOCK 编译为 false）自动禁用，
- *   订单读写走 CloudBase orders 集合，代码会被摇树移除。
+ * - 开关打开时（USE_ORDER_MOCK === true）订单落本地 storage，
+ *   不依赖云端集合 / 安全规则，即可完整演示
+ *   「提交订单 → 订单详情 → 我的订单」闭环与状态流转。
+ * - 开关关闭时订单读写走 CloudBase orders 集合，代码会被摇树移除。
+ *
+ * 开关默认继承全局 Mock 开关（USE_MOCK），可用 .env 里的
+ * VITE_ORDER_MOCK 单独覆盖，从而在开发环境直连云端 orders 集合
+ * 调试真实数据（见 src/utils/mock.ts 与 README「Mock 数据开关」）。
  *
  * 【与云端语义对齐】
  * - mockCreateOrder      ↔ orders.add()

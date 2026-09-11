@@ -300,6 +300,58 @@ cloudbase.downloadFile({
 
 ```
 
+## Mock 数据开关（开发调试）
+
+项目有两套数据源：本地 Mock（`mock/products_02.json` + 本地 storage）与 CloudBase 云数据库。
+由 `.env` 里的两个开关决定，**默认语义**是「开发环境读 Mock、生产构建走云端」：
+
+| 变量 | 作用域 | 取值 | 不配置时 |
+| --- | --- | --- | --- |
+| `VITE_USE_MOCK` | 全局：商品列表 / 首页推荐 / 搜索 / 商品详情 | `'true'` / `'false'` | 非生产构建启用（dev 开 / build 关） |
+| `VITE_ORDER_MOCK` | 订单：下单 / 订单列表 / 订单详情 | `'true'` / `'false'` | 继承 `VITE_USE_MOCK` |
+
+订单开关独立于全局开关，因此可以组合出「商品走 Mock、订单走云端」，
+直接用控制台 `orders` 集合里的真实数据调试「下单 → 列表 → 详情」链路。
+
+### 为什么订单需要独立开关
+
+原先两者都由 `process.env.NODE_ENV` 决定，开发环境只能**整体**走 Mock：
+订单页永远读本地 storage 的 `mock_orders`，**根本不会查云端 `orders` 集合**
+（`if (USE_MOCK) { ... return }` 提前返回了）。
+于是会出现「控制台里明明有订单、页面却是空的」——那是两份完全独立的数据，
+既不是权限问题，也不是安全规则问题。
+
+### 常用配置
+
+```bash
+# 让订单在开发环境直连云端（商品仍走本地 Mock）—— 最常用
+VITE_ORDER_MOCK=false
+
+# 让开发环境整体走云端（调试真实商品数据）
+VITE_USE_MOCK=false
+```
+
+> ⚠️ `.env` 对 dev 与 build **同时生效**，所以不要在里面写 `VITE_USE_MOCK=true`
+> ——那会让生产构建也读 Mock。若确实需要「dev 读 Mock、build 走云端」的固定组合，
+> 请用 `.env.development` 与 `.env.production` 分开配置。
+>
+> 改完 `.env` 必须**重新编译**：dev 构建不会热更新环境变量。
+
+### 怎么确认当前走的是哪条路
+
+启动时控制台会打印数据源，一眼可辨：
+
+```
+🧪 [Mock] 商品数据源：本地 mock/products_02.json（10 条）
+☁️ [CloudBase] 订单数据源：云数据库 orders 集合
+```
+
+两个开关都是编译期常量（`process.env.NODE_ENV` / `import.meta.env.VITE_*` 会被
+构建期静态替换），因此关闭时的 Mock 数据与分支会被常量折叠 + 摇树移除，不会打进线上包。
+
+顺带一提：这也是排查「本地有数据但页面为空」类问题的第一手线索——
+先看数据源日志，再怀疑权限。
+
 ## 部署指南
 
 ### 配置云函数安全规则（H5 / 匿名端必需）
@@ -319,6 +371,114 @@ cloudbase.downloadFile({
 ```
 
 > 这里放行的只是「能否调用云函数」，函数的登录态校验仍在服务端执行（拿不到 uid 会返回 `UNAUTHENTICATED`）。
+
+### 配置数据库安全规则（`carts` / `orders` 等「按用户」集合）
+
+购物车存在云端 `carts` 集合，一个用户一条文档（`{ userId, items, createdAt, updatedAt }`）。
+App 启动时会把「本地临时车」合并进云端（见 `src/utils/cart.ts`），旧版本的本地购物车会自动迁移，无需手工处理。
+
+集合安全规则必须按 `userId` 判定归属（`carts` 集合不存在时先新建）：
+
+```json
+{
+  "read": "auth.uid != null && doc.userId == auth.uid",
+  "create": "auth.uid != null && request.data.userId == auth.uid",
+  "update": "auth.uid != null && doc.userId == auth.uid",
+  "delete": "auth.uid != null && doc.userId == auth.uid"
+}
+```
+
+规则也可以精简为三行：`update` / `delete` 未配置时会继承 `write`，
+所以用一条 `write` 收敛即可；但 `create` 校验的是 `request.data.*`，必须单独写。
+
+```json
+{
+  "read": "auth.uid != null && doc.userId == auth.uid",
+  "create": "auth.uid != null && request.data.userId == auth.uid",
+  "write": "auth.uid != null && doc.userId == auth.uid"
+}
+```
+
+两个容易踩的坑：
+
+1. **不要写成 `doc._openid == auth.openid`**：匿名登录会话里 `auth.openid` 为空，
+   规则这样写会导致 H5 / 匿名端「只能新增，读取和更新全部 403」
+   （`DATABASE_PERMISSION_DENIED: Permission denied by security rules`）。
+2. **`create` 规则不要引用 `doc.*`**：创建时文档还不存在，应校验 `request.data.userId`。
+
+> 按 `userId` 判定归属的规则还有「查询条件子集校验」：客户端查询必须自带能覆盖规则的条件，
+> 所以代码里统一用 `where({ userId }).get() / .update()`，
+> 不能用 `doc(id).get() / .update()`（会 403）。
+
+#### `orders` 集合（客户端只读，写入仅限云函数）
+
+订单写入完全走 `createOrder` 云函数：金额由服务端按 `products` 的权威价格重算，
+归属用户取自登录态（拿不到 uid 直接返回 `UNAUTHENTICATED`），
+所以客户端**一个字都写不进去**，只保留读权限：
+
+```json
+{
+  "read": "auth.uid != null && doc.userId == auth.uid",
+  "write": false
+}
+```
+
+> **`auth.uid != null` 不能省。**
+> 只写 `doc.userId == auth.uid` 时，若集合里存在一条**缺 `userId` 的文档**
+> （控制台手工补数据、导入历史订单、将来某个新云函数漏传），
+> 未登录状态下 `auth.uid` 为 `null`，此时 `doc.userId == auth.uid`
+> 就退化成 `null == null` → **判真**，该订单被静默读出：
+> 规则引擎不报错，日志里也没有痕迹。
+> 而 Publishable Key 本身就打包在前端、公开可见，构造这个请求的成本极低。
+>
+> 订单虽然有云函数兜底写入 `userId`，但安全规则是最后一道防线，
+> 应当自身闭环，而不是依赖「上游数据永不脏」。
+> `carts` 同样带该守卫，两个集合保持一致。
+>
+> 加上它不引入任何额外的查询条件要求（子集校验只看 `doc.*` 字段，
+> `auth.uid` 不是文档字段），客户端现有的 `where({ userId })` 查询无需改动。
+
+### 跨端身份与数据归属（为什么购物车在另一端看不到）
+
+上面按 `userId` 判定归属，解决的是「两端判定标准是否一致」，
+**不等于**「同一个人在两端一定是同一个账号」。这两件事要分开看：
+
+- **判定标准**（由规则决定）：`doc.userId == auth.uid` 两端一致，
+  因此不会出现「两端 uid 其实相同、却仍被判成两个创建者」的情况。
+- **身份**（由登录方式决定）：规则管不着。**uid 不同就是两个账号，数据互不可见**——这不是 bug。
+
+各端登录方式与 uid 特点：
+
+| 端 | 登录方式 | uid 特点 |
+| --- | --- | --- |
+| 微信小程序 | `signInWithOpenId` | 与微信账号绑定，永久稳定，清缓存 / 换设备后不变 |
+| H5 / App | `signInAnonymously` 匿名登录 | 存在本地，**清缓存即换新 uid** |
+
+于是：
+
+| 场景 | uid | 数据是否互通 |
+| --- | --- | --- |
+| 同一端、同一账号 | 相同 | 互通 |
+| 两端登录收敛到同一 CloudBase 用户（例如两端都用同一手机号登录） | 相同 | 互通 |
+| 小程序微信登录 ↔ H5 未登录（匿名） | 不同 | 不互通（正常现象） |
+| H5 匿名后清缓存重进 | 不同（新匿名 uid） | 不互通（相当于换了个人） |
+
+**要让跨端数据互通，只能在产品层做身份收敛，调权限档位没有用**。可用手段：
+
+1. **H5 端「匿名转正」**：引导用户绑定手机号或做微信公众号授权登录。绑定成功后 **uid 不变**，
+   匿名期间的数据自动归属到正式账号，零迁移（见 `src/utils/cloudbase.ts` 的 `linkIdentityWithProvider`）。
+2. **两端登录到同一身份源**：例如两端都用同一手机号登录，通常会被归并为同一个 CloudBase 用户。
+3. **微信身份跨端不等于同一账号**：小程序与公众号的 **openid 是两个不同的值**（appid 不同），
+   要靠 **unionid** 才能识别为同一个微信用户。所以「H5 走公众号授权登录」并不自动等于
+   「和小程序端是同一个 uid」，需确认环境已绑定同一微信开放平台账号并实测。
+
+> 这也是**不使用控制台内置「仅创建者可读写（PRIVATE）」档位**的原因之一：该档位由服务端按
+> `_openid` 自动过滤（不要求业务代码写 `where({ _openid })`），而两端使用的身份标识不同
+> （官方说明：小程序端为 openid、Web 端为 uid）。因此即使两端 uid 已经相同，归属字段里躺的
+> 仍是两个不同的值，会被判成两个创建者，且该字段由服务端写入、客户端无法修正。
+
+> 一句话：**「加的车在另一端看不到」是登录身份问题，不是权限配置问题。**
+> 想解决请引导 H5 用户登录，而不是改集合权限。
 
 ### 部署云函数
 
