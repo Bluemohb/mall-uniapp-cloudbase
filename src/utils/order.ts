@@ -124,6 +124,36 @@ interface CloudFnResult {
 }
 
 /**
+ * 云函数调用的两种返回形态
+ *  1) 函数正常执行：{ result: { success, message, code } }
+ *  2) 请求被网关/安全规则拦下（函数根本没执行）：{ code, message }
+ *     例如函数安全规则不放行匿名调用时会返回 code = 'EXCEED_AUTHORITY'
+ *     （H5 / App 端是匿名登录身份，最容易被这条规则拦住）
+ */
+interface CallFunctionResponse {
+  result?: CloudFnResult
+  code?: string
+  message?: string
+  error?: { code?: string, message?: string }
+}
+
+/**
+ * 把云函数调用的失败转成可读错误
+ *
+ * 为什么要区分「网关拦截」与「业务失败」？
+ * 前者说明请求压根没进函数（通常是权限/安全规则问题），
+ * 若统一抛「订单创建失败」，排查时完全不知道该从哪下手。
+ */
+function toFnError(res: unknown, fallback: string): Error {
+  const { result, code, message, error } = (res ?? {}) as CallFunctionResponse
+  const gatewayCode = code || error?.code
+  if (gatewayCode) {
+    return new Error(`${fallback}：${message || error?.message || gatewayCode}（${gatewayCode}）`)
+  }
+  return new Error(result?.message || fallback)
+}
+
+/**
  * 调用云函数创建订单（服务端定价 + 校验）
  * @returns 新建订单的文档 _id
  */
@@ -131,7 +161,7 @@ export async function createOrderViaCloud(payload: CreateOrderPayload): Promise<
   const res = await app.callFunction({ name: 'createOrder', data: payload })
   const result = (res?.result ?? {}) as CloudFnResult
   if (!result.success || !result.orderId) {
-    throw new Error(result.message || '订单创建失败')
+    throw toFnError(res, '订单创建失败')
   }
   return result.orderId
 }
@@ -146,6 +176,6 @@ export async function updateOrderStatusViaCloud(orderId: string, status: OrderSt
   })
   const result = (res?.result ?? {}) as CloudFnResult
   if (!result.success) {
-    throw new Error(result.message || '订单状态更新失败')
+    throw toFnError(res, '订单状态更新失败')
   }
 }

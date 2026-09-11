@@ -19,6 +19,11 @@
  *   shipped   → completed
  *   completed → （终态）
  *   cancelled → （终态）
+ *
+ * 【云函数安全规则（必须配置）】
+ *   H5 / App 端用户是「匿名登录」身份，安全规则若不放行匿名调用，
+ *   客户端会收到 EXCEED_AUTHORITY（函数不会执行），表现为"操作失败"。
+ *   规则配置示例见 cloudfunctions/createOrder/index.js 头部注释。
  * ============================================================
  */
 const tcb = require('@cloudbase/node-sdk')

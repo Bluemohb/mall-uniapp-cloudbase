@@ -302,6 +302,24 @@ cloudbase.downloadFile({
 
 ## 部署指南
 
+### 配置云函数安全规则（H5 / 匿名端必需）
+
+微信小程序端用户以 OpenID 身份调用云函数，一般不受影响；
+但 H5、App 等端是**匿名登录**身份。如果环境级「云函数安全规则」不允许匿名调用，
+客户端只会收到 `EXCEED_AUTHORITY`（函数根本不会执行），界面表现为「下单失败 / 操作失败」。
+
+在 控制台 → 云函数 → 安全规则 中按需放行（`*` 保持原有收紧策略，只放行订单相关函数）：
+
+```json
+{
+  "*": { "invoke": "auth != null && auth.loginType != 'ANONYMOUS'" },
+  "createOrder": { "invoke": "auth != null" },
+  "updateOrderStatus": { "invoke": "auth != null" }
+}
+```
+
+> 这里放行的只是「能否调用云函数」，函数的登录态校验仍在服务端执行（拿不到 uid 会返回 `UNAUTHENTICATED`）。
+
 ### 部署云函数
 
 可以使用 CloudBase CLI 或 MCP 工具部署云函数：

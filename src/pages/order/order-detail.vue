@@ -124,7 +124,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { app } from '@/utils/cloudbase'
+import { app, getUid } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
 import {
   ORDER_STATUS_MAP,
@@ -203,9 +203,12 @@ onLoad((options?: OrderDetailQuery) => {
 /**
  * 查询订单详情
  *
- * 【知识点】CloudBase 单条查询：
- * db.collection('orders').doc(id).get()
- * 返回结果 res.data 是数组（符合 CloudBase 统一返回格式）
+ * 【为什么不用 doc(id).get()？】
+ * orders 集合安全规则是 { "read": "doc.userId == auth.uid" }，
+ * CloudBase 会做「查询条件子集校验」：查询必须自带能覆盖安全规则的条件，
+ * 只按 _id 查询（doc(id).get() / where({_id})）会被直接拒绝，
+ * 客户端只会看到一条难以理解的报错（formatResDocumentData 崩溃）。
+ * 所以这里把归属条件一并写进查询：既能读到订单，也天然只能读自己的订单。
  */
 async function fetchOrderDetail(id: string) {
   loading.value = true
@@ -215,7 +218,13 @@ async function fetchOrderDetail(id: string) {
       order.value = mockGetOrderById(id)
       return
     }
-    const { data } = await app.database().collection('orders').doc(id).get()
+    const uid = await getUid()
+    const { data } = await app
+      .database()
+      .collection('orders')
+      .where({ userId: uid, _id: id })
+      .limit(1)
+      .get()
     order.value = (data && data[0]) as Order || null
   } catch (error) {
     console.error('查询订单详情失败:', error)

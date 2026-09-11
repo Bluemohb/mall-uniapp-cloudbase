@@ -23,6 +23,18 @@
  *   写：客户端一律不可写，只能由云函数（管理端权限）写入
  *     { "write": false }
  *   这样即使有人绕过 UI 直接调 db.collection('orders').add()，也会被拒绝。
+ *
+ * 【云函数安全规则（必须配置，否则 H5 / 匿名端下单会被网关拦掉）】
+ *   微信小程序端用户是 OpenID 身份，通常不受影响；
+ *   但 H5 / App 端用户是「匿名登录」身份，若安全规则把匿名调用拦掉，
+ *   客户端只会收到 request 级错误 EXCEED_AUTHORITY（函数根本不会执行），
+ *   表现为"下单失败"。控制台 → 云函数 → 安全规则 中按需放行：
+ *     {
+ *       "*": { "invoke": "auth != null && auth.loginType != 'ANONYMOUS'" },
+ *       "createOrder": { "invoke": "auth != null" },
+ *       "updateOrderStatus": { "invoke": "auth != null" }
+ *     }
+ *   放行后函数内部仍会校验登录态：拿不到 uid 一律返回 UNAUTHENTICATED。
  * ============================================================
  */
 const tcb = require('@cloudbase/node-sdk')
