@@ -191,7 +191,7 @@ async function fetchSearch(isRefresh = false) {
     const reg = db.RegExp({ regexp: escapeRegExp(kw), options: 'i' })
 
     // 云端模糊搜索：name / category / description 任一命中即可
-    let query: any = db.collection('products')
+    const query = db.collection('products')
       .where(_.or([
         { name: reg },
         { category: reg },
@@ -319,7 +319,9 @@ onReachBottom(() => {
           v-if="keyword"
           class="clear-btn"
           @click="clearInput"
-        >✕</text>
+        >
+          ✕
+        </text>
       </view>
       <text class="search-action" @click="doSearch">搜索</text>
     </view>

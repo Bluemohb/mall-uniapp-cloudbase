@@ -19,7 +19,13 @@
  */
 import products from '../../mock/products_02.json'
 
-/** 是否启用 Mock（非生产构建启用，生产构建自动禁用） */
+/**
+ * 是否启用 Mock（非生产构建启用，生产构建自动禁用）
+ *
+ * 这里读 process.env 是刻意为之：uni-app / Vite 会在构建期把它静态替换成
+ * 'development' | 'production' 字面量（不会真的依赖 Node 的 process 模块）。
+ */
+// eslint-disable-next-line node/prefer-global/process
 export const USE_MOCK = process.env.NODE_ENV !== 'production'
 
 // ============================================================
@@ -73,7 +79,7 @@ export function mockQueryProducts(options: {
   const pageSize = options.pageSize || 10
 
   // 分类过滤（与 where({ category }) 语义一致：精确匹配）
-  let list = category
+  const list = category
     ? PRODUCTS.filter(p => p.category === category)
     : [...PRODUCTS]
 
@@ -123,9 +129,9 @@ export function mockSearchProducts(options: {
   let list = PRODUCTS
   if (keyword) {
     list = PRODUCTS.filter(p =>
-      (p.name || '').toLowerCase().includes(keyword) ||
-      (p.category || '').toLowerCase().includes(keyword) ||
-      (p.description || '').toLowerCase().includes(keyword),
+      (p.name || '').toLowerCase().includes(keyword)
+      || (p.category || '').toLowerCase().includes(keyword)
+      || (p.description || '').toLowerCase().includes(keyword),
     )
   }
 

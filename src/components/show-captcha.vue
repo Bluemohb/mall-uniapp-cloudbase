@@ -1,12 +1,32 @@
 <script setup lang="ts">
-import type { UniPopupInstance } from '@dcloudio/uni-ui'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { auth } from '../utils/cloudbase'
 
+/**
+ * uni-popup 组件实例
+ * @dcloudio/uni-ui 未导出该类型，这里只声明本项目实际用到的方法
+ */
+interface UniPopupInstance {
+  open: (type?: string) => void
+  close: () => void
+}
+
+/** 验证码数据：图片 URL / 校验 token / 会话 state */
+interface CaptchaData {
+  url: string
+  token: string
+  state: string
+}
+
+/** image 组件错误事件对象（uni 声明为 Event，错误信息挂在 detail.errMsg 上） */
+interface ImageErrorDetail {
+  detail?: { errMsg?: string }
+}
+
 const popup = ref<UniPopupInstance | null>(null)
 const captchaCode = ref('')
-// captchaData 用于存储验证码数据,包含图片 URL 、 token 、 state 等信息
-const captchaData = ref<{ url: string, token: string, [key: string]: any }>({ url: '', token: '' })
+// captchaData 用于存储验证码数据，包含图片 URL、token、state 等信息
+const captchaData = ref<CaptchaData>({ url: '', token: '', state: '' })
 const state = ref('')
 const loading = ref(false)
 const show = ref(false) // 控制 v-if 的响应式变量
@@ -22,8 +42,9 @@ watch(popup, (newPopupInstance) => {
 })
 
 // 图片加载错误处理
-function onImageError(e: any) {
-  console.error('验证码图片加载失败:', e.detail.errMsg)
+function onImageError(e: Event) {
+  const errMsg = (e as unknown as ImageErrorDetail).detail?.errMsg
+  console.error('验证码图片加载失败:', errMsg)
   uni.showToast({
     title: '验证码图片加载失败',
     icon: 'none',
@@ -49,7 +70,7 @@ async function handleRefresh() {
 }
 
 // 打开验证码弹窗
-function openCaptcha(data: any) {
+function openCaptcha(data: CaptchaData) {
   console.log('打开验证码弹窗:', data)
   uni.hideLoading()
   captchaData.value = data
@@ -118,12 +139,12 @@ function handleCancel() {
   closeCaptcha()
 }
 
-// 事件处理函数
-function captchaDataHandler(data: any) {
+// 事件处理函数（事件载荷来自 uni.$emit，运行时可能不完整，先按可选字段收）
+function captchaDataHandler(data?: Partial<CaptchaData>) {
   console.log('接收到 CAPTCHA_DATA_CHANGE 事件:', data)
   if (data && data.url && data.token) {
     isRefreshing.value = false // 重置刷新状态
-    openCaptcha(data)
+    openCaptcha({ url: data.url, token: data.token, state: data.state || '' })
   }
   else {
     console.warn('接收到的验证码数据格式不正确:', data)

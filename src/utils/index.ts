@@ -92,19 +92,17 @@ export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object')
     return obj
   if (obj instanceof Date)
-    return new Date(obj.getTime()) as any
+    return new Date(obj.getTime()) as unknown as T
   if (Array.isArray(obj))
-    return obj.map(item => deepClone(item)) as any
-  if (typeof obj === 'object') {
-    const cloned = {} as any
-    for (const key in obj) {
-      if (Object.hasOwn(obj, key)) {
-        cloned[key] = deepClone(obj[key])
-      }
-    }
-    return cloned
+    return obj.map(item => deepClone(item)) as unknown as T
+
+  // 只复制自身可枚举属性（Object.keys 天然排除原型链属性）
+  const source = obj as Record<string, unknown>
+  const cloned: Record<string, unknown> = {}
+  for (const key of Object.keys(source)) {
+    cloned[key] = deepClone(source[key])
   }
-  return obj
+  return cloned as unknown as T
 }
 
 /**

@@ -140,6 +140,12 @@
       }
     }
   ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "CloudBase UniApp",
+    "navigationBarBackgroundColor": "#667eea",
+    "backgroundColor": "#f5f5f5"
+  },
   "tabBar": {
     "color": "#999999",
     "selectedColor": "#667eea",
@@ -171,12 +177,6 @@
         "selectedIconPath": "static/tabbar/mine-active.png"
       }
     ]
-  },
-  "globalStyle": {
-    "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "CloudBase UniApp",
-    "navigationBarBackgroundColor": "#667eea",
-    "backgroundColor": "#f5f5f5"
   },
   "easycom": {
     "autoscan": true,

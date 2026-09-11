@@ -10,17 +10,95 @@ const ENV_ID: string = import.meta.env.VITE_ENV_ID || 'your-env-id'
 // 检查环境ID是否已配置
 export const isValidEnvId = ENV_ID && ENV_ID !== 'your-env-id'
 
-// 客户端Publishable Key, 可前往https://tcb.cloud.tencent.com/dev?envId={env}#/env/apikey获取
+// 客户端 Publishable Key，可前往 https://tcb.cloud.tencent.com/dev?envId={env}#/env/apikey 获取
+//
+// ⚠️ 安全要求（务必在控制台落实）：
+// 1. 这里只能配置「Publishable Key」（可公开、面向客户端），
+//    绝对不要把 SecretId / SecretKey / Secret 密钥打进前端包 —— 前端代码对用户可见。
+// 2. Publishable Key 的权限应当「最小化」：
+//    - 仅授权本应用真正需要的集合（如 products / addresses / orders）与云函数；
+//    - 写操作尽量收敛到云函数（见 cloudfunctions/createOrder、updateOrderStatus），
+//      扣库存、改金额、改订单状态等敏感写操作不应直接给客户端。
+// 3. 数据库集合仍需配置安全规则（如 orders：read 仅归属者、write 一律拒绝）。
 const PUBLISHABLE_KEY = import.meta.env.VITE_PUBLISHABLE_KEY || ''
 
 /**
- * 初始化云开发实例
- * @param {object} config - 初始化配置
- * @param {string} config.env - 环境ID，默认使用ENV_ID
- * @param {number} config.timeout - 超时时间，默认15000ms
- * @returns {object} 云开发实例
+ * 云开发初始化配置
  */
-export function init(config: any = {}) {
+export interface CloudBaseInitConfig {
+  /** 环境ID，默认使用 ENV_ID */
+  env?: string
+  /** 超时时间（毫秒），默认 15000 */
+  timeout?: number
+  /** 客户端 Publishable Key，默认取 VITE_PUBLISHABLE_KEY */
+  accessKey?: string
+}
+
+/** 会话中的用户信息（只声明本项目实际用到的字段） */
+export interface SessionUser {
+  id?: string
+  is_anonymous?: boolean
+}
+
+/** 会话信息（只声明本项目实际用到的字段） */
+export interface SessionInfo {
+  user?: SessionUser
+  scope?: string
+}
+
+/** 已绑定的第三方身份 */
+export interface UserIdentity {
+  provider?: string
+  provider_user_id?: string
+  created_at?: string
+  [key: string]: unknown
+}
+
+/** getUserIdentities 返回结构 */
+export interface UserIdentitiesResult {
+  identities: UserIdentity[]
+}
+
+/**
+ * 从任意 SDK 返回值中安全提取 session（SDK 类型不完整，此处做一次收窄）
+ */
+function pickSession(res: unknown): SessionInfo | null {
+  if (!res || typeof res !== 'object')
+    return null
+  const data = (res as { data?: unknown }).data
+  if (!data || typeof data !== 'object')
+    return null
+  const session = (data as { session?: unknown }).session
+  if (!session || typeof session !== 'object')
+    return null
+  return session as SessionInfo
+}
+
+/**
+ * 从任意 SDK 返回值中安全提取 error
+ * （SDK 失败时不抛异常，而是返回 { data, error }，必须显式检查）
+ */
+function pickError(res: unknown): unknown {
+  if (res && typeof res === 'object' && 'error' in res)
+    return (res as { error?: unknown }).error
+  return undefined
+}
+
+/** 把 unknown 异常转成可读文案 */
+function toErrorMessage(err: unknown): string {
+  if (err instanceof Error)
+    return err.message
+  if (typeof err === 'string')
+    return err
+  return String(err)
+}
+
+/**
+ * 初始化云开发实例
+ * @param config - 初始化配置
+ * @returns 云开发实例
+ */
+export function init(config: CloudBaseInitConfig = {}) {
   const appConfig = {
     env: config.env || ENV_ID,
     timeout: config.timeout || 15000,
@@ -35,7 +113,10 @@ export function init(config: any = {}) {
   }
 
   if (!appConfig.accessKey) {
-    console.warn('客户端 Publishable Key 未配置')
+    console.warn(
+      '客户端 Publishable Key 未配置：请在 .env 中设置 VITE_PUBLISHABLE_KEY。'
+      + '注意只能使用 Publishable Key（可公开），切勿把 SecretKey 打入前端。',
+    )
   }
 
   return cloudbase.init(appConfig)
@@ -50,6 +131,12 @@ export const app = init()
  * 云开发认证实例
  */
 export const auth = app.auth
+
+/** 读取当前会话（返回 null 表示无有效会话） */
+async function readSession(): Promise<SessionInfo | null> {
+  const res: unknown = await auth.getSession()
+  return pickSession(res)
+}
 
 /**
  * 检查环境配置是否有效
@@ -73,7 +160,7 @@ export function checkEnvironment() {
 export function isMpWeixin(): boolean {
   try {
     // 微信小程序（含开发者工具）环境才存在全局 wx；H5/App/其他小程序构建均无
-    const g = globalThis as any
+    const g = globalThis as unknown as { wx?: unknown }
     return typeof g.wx !== 'undefined'
   }
   catch {
@@ -108,17 +195,18 @@ let wxOpenIdDone = false
  * 与匿名/手机号/数据库同一通道，无需 httpOverCallFunction 云函数）。
  * 依赖：小程序后台已配置 request 合法域名 https://{env}.api.tcloudbasegateway.com
  */
-async function signInWithOpenIdOnly() {
-  const res: any = await auth.signInWithOpenId({ useWxCloud: false })
-  console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || res)
-  if (res?.error) {
-    throw res.error
+async function signInWithOpenIdOnly(): Promise<SessionInfo> {
+  const res: unknown = await auth.signInWithOpenId({ useWxCloud: false })
+  console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || String(res))
+
+  const err = pickError(res)
+  if (err) {
+    throw err
   }
 
   // 二次确认：会话真的建立（有 user.id 且不是 accessKey 匿名态）
   // （SDK 失败时不抛异常，而是返回 { data, error }，必须显式检查，否则会"假成功"）
-  const check: any = await auth.getSession()
-  const session = check?.data?.session
+  const session = await readSession()
   if (!session || !session.user?.id || session.scope === 'accessKey') {
     throw new Error(`openid 登录未建立有效会话（scope: ${session?.scope || 'none'}）`)
   }
@@ -132,37 +220,37 @@ async function signInWithOpenIdOnly() {
  * （SDK 的 signInWithOpenId / signInAnonymously 失败时都不抛异常，
  *   而是返回 { data, error }，必须显式检查返回值，否则会"假成功"）
  */
-export async function login() {
+export async function login(): Promise<void> {
   try {
     if (isMpWeixin()) {
       try {
         // 微信端：OpenID 静默登录（主登录）
         console.log('[登录] 微信端：尝试 OpenID 静默登录（CloudBase 标准网关通道）')
-        const session: any = await signInWithOpenIdOnly()
+        const session = await signInWithOpenIdOnly()
         if (session?.user?.is_anonymous) {
           throw new Error('openid 登录后仍为匿名态')
         }
         console.log('✅ 微信 OpenID 静默登录成功（身份稳定）')
       }
-      catch (e: any) {
-        console.warn('OpenID 登录失败:', e?.message || e)
+      catch (e) {
+        console.warn('OpenID 登录失败:', toErrorMessage(e))
 
         // ⚠️ 关键：已有会话（哪怕是匿名的）必须保留。
         // 直接再 signInAnonymously() 会生成新的匿名 uid，购物车 / 订单会"消失"。
-        const cur: any = await auth.getSession()
-        if (cur?.data?.session?.user?.id) {
+        const cur = await readSession()
+        if (cur?.user?.id) {
           console.log('🟡 保留现有会话（游客身份），本次 OpenID 登录未成功')
-          return cur.data.session
+          return
         }
 
         // 确实连会话都没有，才做匿名兜底（身份不稳定，仅保证可用）
-        const anonRes: any = await auth.signInAnonymously()
+        const anonRes: unknown = await auth.signInAnonymously()
         // ⚠️ 匿名登录同样可能"假成功"（失败时返回 { data, error } 而非抛异常）
-        if (anonRes?.error) {
-          throw anonRes.error
+        const anonErr = pickError(anonRes)
+        if (anonErr) {
+          throw anonErr
         }
-        const check2: any = await auth.getSession()
-        const s2 = check2?.data?.session
+        const s2 = await readSession()
         if (!s2 || !s2.user?.id) {
           throw new Error('匿名登录兜底也未建立有效会话')
         }
@@ -171,12 +259,13 @@ export async function login() {
     }
     else {
       // 非微信端：匿名登录兜底（多端通用）
-      const anonRes: any = await auth.signInAnonymously()
-      if (anonRes?.error) {
-        throw anonRes.error
+      const anonRes: unknown = await auth.signInAnonymously()
+      const anonErr = pickError(anonRes)
+      if (anonErr) {
+        throw anonErr
       }
-      const check2: any = await auth.getSession()
-      if (!check2?.data?.session?.user?.id) {
+      const session = await readSession()
+      if (!session?.user?.id) {
         throw new Error('匿名登录未建立有效会话')
       }
       console.log('🟢 非微信端：匿名登录成功')
@@ -218,24 +307,23 @@ export async function ensureLogin(): Promise<boolean> {
 
 async function doEnsureLogin(): Promise<boolean> {
   try {
-    const { data } = await auth.getSession()
-    const session: any = data?.session
+    const session = await readSession()
     const uid: string = session?.user?.id || ''
 
     if (uid) {
-      const anonymous = !!session.user?.is_anonymous || session.scope === 'anonymous'
-      console.log(`[登录] 已有本地会话 uid=${uid} scope=${session.scope} is_anonymous=${anonymous}`)
+      const anonymous = !!session?.user?.is_anonymous || session?.scope === 'anonymous'
+      console.log(`[登录] 已有本地会话 uid=${uid} scope=${session?.scope} is_anonymous=${anonymous}`)
 
       if (isMpWeixin() && anonymous && !wxOpenIdDone) {
         console.log('[登录] 检测到缓存的匿名会话，尝试用微信 OpenID 升级为正式身份')
         try {
-          const next: any = await signInWithOpenIdOnly()
+          const next = await signInWithOpenIdOnly()
           const newUid: string = next?.user?.id || ''
           const same = newUid === uid
           console.log(`✅ 匿名已升级为微信正式用户（uid: ${uid} → ${newUid}）${same ? ' uid 未变，数据自动继承' : ' ⚠️ uid 已变，请确认数据是否继承'}`)
         }
-        catch (e: any) {
-          console.warn('匿名升级失败，保持游客身份:', e?.message || e)
+        catch (e) {
+          console.warn('匿名升级失败，保持游客身份:', toErrorMessage(e))
         }
       }
       return true
@@ -251,16 +339,22 @@ async function doEnsureLogin(): Promise<boolean> {
 }
 
 /**
- * 获取当前用户 ID；无登录态时自动登录（微信 openid / 其他端匿名）
+ * 获取当前用户 ID（页面统一入口）
+ *
+ * 统一登录语义：内部复用 ensureLogin()，它会处理
+ *  1. 已有正式会话 → 直接返回
+ *  2. 微信端已有匿名会话 → 主动用 OpenID 升级（不再停留在游客态）
+ *  3. 无会话 → openid / 匿名登录
+ * 且自带并发去重，避免多页面同时触发重复登录。
+ *
+ * @throws 无法建立有效会话时抛错（避免返回空 uid 造成"静默查不到数据"）
  */
 export async function getUid(): Promise<string> {
-  const { data } = await auth.getSession()
-  let uid = data?.session?.user?.id || ''
-
+  await ensureLogin()
+  const session = await readSession()
+  const uid = session?.user?.id || ''
   if (!uid) {
-    await login()
-    const res = await auth.getSession()
-    uid = res.data?.session?.user?.id || ''
+    throw new Error('未获取到用户标识，请检查云开发登录配置')
   }
   return uid
 }
@@ -280,14 +374,20 @@ export async function isAnonymousUser(): Promise<boolean> {
 
 /**
  * 查询当前账号已绑定的身份源列表（如微信、手机号等）
- * @returns 返回 { identities: Array<{ provider, provider_user_id, created_at, ... }> }
+ * @returns 身份源列表包装对象；未绑定时 identities 为空数组
  */
-export async function getUserIdentities(): Promise<any> {
+export async function getUserIdentities(): Promise<UserIdentitiesResult> {
   const { data, error } = await auth.getUserIdentities()
   if (error) {
     throw error
   }
-  return data
+
+  // SDK 返回值类型不完整，这里做一次显式收窄 + 运行时校验
+  const raw: unknown = data
+  const parsed = (raw && typeof raw === 'object' ? raw : {}) as { identities?: unknown }
+  return {
+    identities: Array.isArray(parsed.identities) ? parsed.identities as UserIdentity[] : [],
+  }
 }
 
 /**
@@ -301,7 +401,9 @@ export async function getUserIdentities(): Promise<any> {
  * @param provider 身份源标识，如 'wechat' | 'google' | 'github' 等
  */
 export async function linkIdentityWithProvider(provider: string) {
-  const { data, error } = await auth.linkIdentity({ provider } as any)
+  // SDK 未导出完整入参类型，边界处做一次收窄断言
+  const params = { provider } as unknown as Parameters<typeof auth.linkIdentity>[0]
+  const { data, error } = await auth.linkIdentity(params)
   if (error) {
     throw error
   }
@@ -398,14 +500,14 @@ export async function signInWithPassword(username: string, password: string) {
   }
 }
 
-type SignInWithOAuthRes = Awaited<ReturnType<typeof auth.signInWithOtp>>
-type SignInWithOAuthReq = Parameters<typeof auth.signInWithOtp>[0]
+type SignInWithOtpRes = Awaited<ReturnType<typeof auth.signInWithOtp>>
+type SignInWithOtpReq = Parameters<typeof auth.signInWithOtp>[0]
 /**
  * 使用一次性密码（OTP）进行登录验证，支持邮箱和手机号验证
- * @param {SignInWithOAuthReq} params - 登录参数
- * @returns {Promise} 验证信息
+ * @param params - 登录参数
+ * @returns 验证信息
  */
-export async function signInWithOtp(params: SignInWithOAuthReq): Promise<SignInWithOAuthRes['data']['verifyOtp'] | SignInWithOAuthRes['error']> {
+export async function signInWithOtp(params: SignInWithOtpReq): Promise<SignInWithOtpRes['data']['verifyOtp'] | SignInWithOtpRes['error']> {
   // 检查环境配置
   if (!checkEnvironment()) {
     throw new Error('环境ID未配置')
@@ -478,7 +580,7 @@ export async function initCloudBase() {
 
 /**
  * 退出登录
- * @returns {Promise}
+ * @returns 无返回值；退出失败时仅打印日志，不抛异常
  */
 export async function logout() {
   try {

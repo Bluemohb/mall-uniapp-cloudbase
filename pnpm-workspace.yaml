@@ -1,12 +1,11 @@
+shellEmulator: true
+
+trustPolicy: no-downgrade
+patchedDependencies:
+  '@dcloudio/uni-ui': patches/@dcloudio__uni-ui.patch
+
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - core-js
   - core-js-pure
   - esbuild
-
-patchedDependencies:
-  '@dcloudio/uni-ui': patches/@dcloudio__uni-ui.patch
-
-shellEmulator: true
-
-trustPolicy: no-downgrade
