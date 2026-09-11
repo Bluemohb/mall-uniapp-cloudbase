@@ -90,7 +90,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { app, login } from '@/utils/cloudbase'
+import { app, getUid } from '@/utils/cloudbase'
+import { CACHE_KEYS, removeCache } from '@/utils/cache'
 
 // ============================================================
 // 类型定义
@@ -142,23 +143,11 @@ onShow(() => {
 // 数据加载
 // ============================================================
 
-async function getUserId(): Promise<string> {
-  await login()
-  const { data } = await app.auth.getSession()
-  // 安全提取 uid
-  const uid = data?.session?.user?.id || ''
-  return uid
-}
-
 async function fetchAddresses() {
   loading.value = true
   try {
-    const uid = await getUserId()
-    if (!uid) {
-      console.warn('未获取到用户ID')
-      addressList.value = []
-      return
-    }
+    // 统一登录入口：内部按需登录并处理匿名升级
+    const uid = await getUid()
 
     const { data } = await app
       .database()
@@ -207,8 +196,7 @@ function goEdit(id: string) {
 
 async function setDefault(id: string) {
   try {
-    const uid = await getUserId()
-    if (!uid) return
+    const uid = await getUid()
 
     // 先清除该用户所有默认地址
     const { data: defaults } = await app
@@ -228,9 +216,12 @@ async function setDefault(id: string) {
       updatedAt: Date.now(),
     })
 
+    // 默认地址已变更，主动失效订单页的默认地址缓存
+    removeCache(CACHE_KEYS.defaultAddress)
     uni.showToast({ title: '已设为默认地址', icon: 'success' })
     fetchAddresses()
-  } catch (error) {
+  }
+  catch (error) {
     console.error('设置默认地址失败:', error)
     uni.showToast({ title: '操作失败', icon: 'none' })
   }
@@ -245,8 +236,11 @@ function onDelete(id: string, index: number) {
         try {
           await app.database().collection('addresses').doc(id).remove()
           addressList.value.splice(index, 1)
+          // 删除的可能是默认地址，失效订单页缓存
+          removeCache(CACHE_KEYS.defaultAddress)
           uni.showToast({ title: '已删除', icon: 'success' })
-        } catch (error) {
+        }
+        catch (error) {
           console.error('删除地址失败:', error)
           uni.showToast({ title: '删除失败', icon: 'none' })
         }

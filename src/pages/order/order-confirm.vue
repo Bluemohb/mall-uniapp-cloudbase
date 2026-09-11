@@ -51,7 +51,7 @@
           <text v-if="item.specs" class="goods-specs">{{ item.specs }}</text>
         </view>
         <view class="goods-right">
-          <text class="goods-price">¥{{ item.price.toFixed(2) }}</text>
+          <text class="goods-price">¥{{ formatMoney(item.price) }}</text>
           <text class="goods-qty">x{{ item.quantity }}</text>
         </view>
       </view>
@@ -72,7 +72,7 @@
     <view class="summary-card">
       <view class="summary-row">
         <text class="summary-label">商品总额</text>
-        <text class="summary-value">¥{{ totalPrice.toFixed(2) }}</text>
+        <text class="summary-value">¥{{ totalPriceText }}</text>
       </view>
       <view class="summary-row">
         <text class="summary-label">运费</text>
@@ -80,7 +80,7 @@
       </view>
       <view class="summary-row total">
         <text class="summary-label">应付总额</text>
-        <text class="summary-total">¥{{ totalPrice.toFixed(2) }}</text>
+        <text class="summary-total">¥{{ totalPriceText }}</text>
       </view>
     </view>
 
@@ -88,7 +88,7 @@
     <view class="footer-bar">
       <view class="footer-total">
         <text class="footer-label">合计：</text>
-        <text class="footer-price">¥{{ totalPrice.toFixed(2) }}</text>
+        <text class="footer-price">¥{{ totalPriceText }}</text>
       </view>
       <view
         class="submit-btn"
@@ -104,13 +104,21 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { app, login } from '@/utils/cloudbase'
-import { generateOrderNo } from '@/utils/order'
-import type { OrderItem, OrderAddress } from '@/utils/order'
+import { app, getUid } from '@/utils/cloudbase'
+import { createOrderViaCloud, generateOrderNo } from '@/utils/order'
+import type { CreateOrderPayload, OrderAddress, OrderItem, OrderStatus } from '@/utils/order'
+import { calcTotalCents, formatCents, formatMoney, toYuan } from '@/utils/money'
+import { CACHE_KEYS, getCache, setCache } from '@/utils/cache'
+import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
 
 // Mock 数据层：开发环境订单落本地，生产构建自动禁用（走云端 orders 集合）
 import { USE_MOCK } from '@/utils/mock'
 import { MOCK_USER_ID, mockCreateOrder } from '@/utils/order-mock'
+
+/** 本页路由参数 */
+interface ConfirmPageQuery {
+  from?: 'cart' | 'buynow'
+}
 
 // ============================================================
 // 响应式数据
@@ -135,10 +143,11 @@ const from = ref<'cart' | 'buynow'>('cart')
 // 计算属性
 // ============================================================
 
-/** 应付总金额 = Σ(单价 × 数量) */
-const totalPrice = computed(() =>
-  items.value.reduce((sum, item) => sum + item.price * item.quantity, 0),
-)
+/** 应付总金额（分）= Σ(单价 × 数量)，整数运算避免浮点误差 */
+const totalCents = computed(() => calcTotalCents(items.value))
+
+/** 应付总金额展示文本（元，两位小数） */
+const totalPriceText = computed(() => formatCents(totalCents.value))
 
 // ============================================================
 // 页面生命周期
@@ -151,7 +160,7 @@ const totalPrice = computed(() =>
  * 跳转时：uni.navigateTo({ url: '/pages/order/order-confirm?from=cart' })
  * 这里：options.from 就能拿到 'cart'
  */
-onLoad((options: any) => {
+onLoad((options?: ConfirmPageQuery) => {
   from.value = options?.from === 'buynow' ? 'buynow' : 'cart'
 })
 
@@ -179,35 +188,36 @@ onShow(async () => {
  */
 function loadItems() {
   const key = from.value === 'cart' ? 'checkout_items' : 'buy_now_item'
-  items.value = uni.getStorageSync(key) || []
+  const raw = uni.getStorageSync(key)
+  items.value = Array.isArray(raw) ? (raw as OrderItem[]) : []
 }
 
 /**
  * 读取收货地址，优先级：
  * 1. 订单页刚选中的地址
- * 2. 本地缓存里的默认地址
+ * 2. 本地缓存里的默认地址（带过期时间，过期自动回源）
  * 3. 数据库默认地址
  * 4. 没有地址时展示空态
+ *
+ * ⚠️ 默认地址缓存必须带失效时间：用户可能在地址页改了默认地址，
+ *    若本地缓存永不过期，这里会一直用旧地址下单。
  */
 async function loadAddress() {
   const selected = uni.getStorageSync('selected_address')
   if (selected) {
-    selectedAddress.value = selected
+    selectedAddress.value = selected as OrderAddress
     return
   }
 
-  const cachedDefault = uni.getStorageSync('default_address')
+  // getCache 内部会校验过期时间，过期/旧版裸数据会返回 null 并清理
+  const cachedDefault = getCache<OrderAddress>(CACHE_KEYS.defaultAddress)
   if (cachedDefault) {
     selectedAddress.value = cachedDefault
     return
   }
 
   try {
-    const uid = await getUserId()
-    if (!uid) {
-      selectedAddress.value = null
-      return
-    }
+    const uid = await getUid()
 
     const { data } = await app
       .database()
@@ -225,42 +235,18 @@ async function loadAddress() {
       return
     }
 
-    const defaultAddress = {
-      _id: item._id,
+    const defaultAddress: OrderAddress = {
       name: item.name,
       phone: item.phone,
       fullAddress: `${item.province}${item.city}${item.district} ${item.detail}`,
     }
 
-    uni.setStorageSync('default_address', defaultAddress)
+    setCache(CACHE_KEYS.defaultAddress, defaultAddress)
     selectedAddress.value = defaultAddress
   } catch (error) {
     console.error('加载默认地址失败:', error)
     selectedAddress.value = null
   }
-}
-
-// ============================================================
-// 获取用户ID
-// ============================================================
-
-/**
- * 获取当前用户ID
- *
- * 【相比第4步的小优化】
- * 第4步地址页每次都先匿名登录。这里先查登录态，
- * 已登录就直接用，避免重复登录请求。
- */
-async function getUserId(): Promise<string> {
-  const { data } = await app.auth.getSession()
-  let uid = data?.session?.user?.id || ''
-
-  if (!uid) {
-    await login()
-    const res = await app.auth.getSession()
-    uid = res.data?.session?.user?.id || ''
-  }
-  return uid
 }
 
 // ============================================================
@@ -277,11 +263,11 @@ function goSelectAddress() {
  *
  * 【步骤拆解】
  * 1. 校验：有商品 + 已选地址
- * 2. 获取用户ID（订单归属）
- * 3. 组装订单数据（含快照、订单号、状态）
- * 4. 写入云数据库 orders 集合
- * 5. 清理：购物车移除已购商品 + 删除临时存储
- * 6. 跳转订单详情页
+ * 2. 组装请求（mock 分支本地落单 / 云端分支调云函数）
+ * 3. 云端：由 createOrder 云函数做「服务端定价 + 归属 + 初始状态」，
+ *    客户端不再直接写 orders 集合，避免金额/状态被篡改
+ * 4. 清理：购物车移除已购商品 + 删除临时存储
+ * 5. 跳转订单详情页
  */
 async function submitOrder() {
   // ---- 1. 校验 ----
@@ -299,52 +285,45 @@ async function submitOrder() {
   uni.showLoading({ title: '正在提交...', mask: true })
 
   try {
-    // ---- 2. 组装订单数据 ----
-    const orderData = {
-      orderNo: generateOrderNo(),             // 业务订单号
-      userId: '',                             // 归属用户（mock/云端分支分别赋值）
-      items: items.value,                     // 商品快照
-      address: selectedAddress.value,         // 地址快照
-      totalPrice: Number(totalPrice.value.toFixed(2)), // 金额保留两位
-      status: 'pending' as const,             // 初始状态：待支付
-      remark: remark.value.trim(),            // 备注
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    }
-
-    // ---- 4. 写入订单 ----
+    // ---- 2. 下单 ----
     let orderId = ''
 
     if (USE_MOCK) {
       // ===== Mock 模式（开发环境）：订单落本地，不依赖云端登录态 =====
-      orderData.userId = MOCK_USER_ID
+      const orderData = {
+        orderNo: generateOrderNo(),
+        userId: MOCK_USER_ID,
+        items: items.value,
+        address: selectedAddress.value,
+        totalPrice: toYuan(totalCents.value),
+        totalPriceCents: totalCents.value,
+        status: 'pending' as OrderStatus,
+        remark: remark.value.trim(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
       const order = mockCreateOrder(orderData)
       orderId = order._id
     }
     else {
-      // ===== 云端模式（生产构建）：写入 orders 集合 =====
-      const uid = await getUserId()
-      if (!uid) {
-        throw new Error('未获取到用户ID')
+      // ===== 云端模式（生产构建）：调用云函数 =====
+      // 客户端只提交「商品ID + 数量 + 规格」，价格/库存/归属/状态全部由服务端决定
+      const payload: CreateOrderPayload = {
+        items: items.value.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          specs: item.specs || '',
+        })),
+        address: selectedAddress.value,
+        remark: remark.value.trim(),
       }
-      orderData.userId = uid
-
-      // 【知识点】collection.add(对象) 插入单条，返回 { id: 新文档ID }
-      // ⚠️ 生产环境注意：真实项目应在云函数中校验金额/扣库存，
-      //    防止用户篡改价格。这里先直连数据库便于学习。
-      // ⚠️ AddRes 可能携带 code/message（写入被拒绝等），无 id 时必须判失败，
-      //    不能把"假成功"当成功继续跳转，否则详情页必然查不到订单。
-      const res: any = await app.database().collection('orders').add(orderData)
-      orderId = res?.id || res?.ids?.[0] || res?.insertedIds?.[0] || ''
-      if (!orderId || res?.code) {
-        console.error('订单写入返回异常:', res)
-        throw new Error(res?.message || '订单写入失败，请重试')
-      }
+      orderId = await createOrderViaCloud(payload)
     }
 
-    // ---- 5. 清理数据 ----
+    // ---- 3. 清理数据 ----
     if (from.value === 'cart') {
       // 购物车来源：把已购买的商品从购物车移除
+      await ensureCartUid()
       removePurchasedFromCart()
     }
     // 删除"立即购买"的临时数据
@@ -357,7 +336,7 @@ async function submitOrder() {
     uni.hideLoading()
     uni.showToast({ title: '订单提交成功', icon: 'success' })
 
-    // ---- 6. 跳转订单详情页 ----
+    // ---- 4. 跳转订单详情页 ----
     // redirectTo：关闭当前确认页，防止返回后重复提交
     setTimeout(() => {
       uni.redirectTo({ url: `/pages/order/order-detail?id=${orderId}` })
@@ -365,7 +344,8 @@ async function submitOrder() {
   } catch (error) {
     uni.hideLoading()
     console.error('提交订单失败:', error)
-    uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+    const message = error instanceof Error ? error.message : '提交失败，请重试'
+    uni.showToast({ title: message, icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -374,9 +354,10 @@ async function submitOrder() {
 /**
  * 从本地购物车中移除本次已下单的商品
  * 匹配条件：productId + specs 都相同（和加入购物车的去重逻辑一致）
+ * 使用按用户隔离的购物车 key（cart.ts），不再直接读写全局 cart_list
  */
 function removePurchasedFromCart() {
-  const cartList: any[] = uni.getStorageSync('cart_list') || []
+  const cartList = readCart()
 
   const remain = cartList.filter(cartItem =>
     // 保留那些"不在本次订单商品中"的购物车项
@@ -386,7 +367,7 @@ function removePurchasedFromCart() {
     ),
   )
 
-  uni.setStorageSync('cart_list', remain)
+  writeCart(remain)
 }
 </script>
 

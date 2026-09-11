@@ -53,7 +53,7 @@
             <text v-if="item.specs" class="goods-specs">{{ item.specs }}</text>
           </view>
           <view class="goods-right">
-            <text class="goods-price">¥{{ item.price.toFixed(2) }}</text>
+            <text class="goods-price">¥{{ formatMoney(item.price) }}</text>
             <text class="goods-qty">x{{ item.quantity }}</text>
           </view>
         </view>
@@ -63,7 +63,7 @@
       <view class="summary-card">
         <view class="summary-row">
           <text class="summary-label">商品总额</text>
-          <text class="summary-value">¥{{ order.totalPrice.toFixed(2) }}</text>
+          <text class="summary-value">¥{{ formatCents(orderAmountCents(order)) }}</text>
         </view>
         <view class="summary-row">
           <text class="summary-label">运费</text>
@@ -71,7 +71,7 @@
         </view>
         <view class="summary-row total">
           <text class="summary-label">实付款</text>
-          <text class="summary-total">¥{{ order.totalPrice.toFixed(2) }}</text>
+          <text class="summary-total">¥{{ formatCents(orderAmountCents(order)) }}</text>
         </view>
       </view>
 
@@ -126,11 +126,23 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
-import { ORDER_STATUS_MAP, type Order, type OrderStatus } from '@/utils/order'
+import {
+  ORDER_STATUS_MAP,
+  orderAmountCents,
+  updateOrderStatusViaCloud,
+  type Order,
+  type OrderStatus,
+} from '@/utils/order'
+import { formatCents, formatMoney } from '@/utils/money'
 
 // Mock 数据层：开发环境订单读本地，生产构建自动禁用（走云端 orders 集合）
 import { USE_MOCK } from '@/utils/mock'
 import { mockGetOrderById, mockUpdateOrder } from '@/utils/order-mock'
+
+/** 订单详情页路由参数 */
+interface OrderDetailQuery {
+  id?: string
+}
 
 // ============================================================
 // 响应式数据
@@ -173,11 +185,12 @@ const statusTip = computed(() => {
 // 页面生命周期
 // ============================================================
 
-onLoad((options: any) => {
+onLoad((options?: OrderDetailQuery) => {
   if (options?.id) {
     orderId.value = options.id
     fetchOrderDetail(options.id)
-  } else {
+  }
+  else {
     uni.showToast({ title: '参数错误', icon: 'none' })
     loading.value = false
   }
@@ -225,30 +238,40 @@ async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
   acting.value = true
 
   try {
-    const updateData: any = {
-      status,
-      updatedAt: Date.now(),
-      ...extra,
-    }
+    const updatedAt = Date.now()
 
-    // ===== Mock 模式（开发环境）：更新本地订单 =====
     if (USE_MOCK) {
-      const updated = mockUpdateOrder(orderId.value, updateData)
+      // ===== Mock 模式（开发环境）：更新本地订单 =====
+      const updated = mockUpdateOrder(orderId.value, {
+        status,
+        updatedAt,
+        ...extra,
+      })
       if (!updated) {
         throw new Error('订单不存在')
       }
+      // 本地同步更新，避免重新请求
+      order.value = { ...order.value!, status, updatedAt, ...extra }
     }
     else {
-      await app.database().collection('orders').doc(orderId.value).update(updateData)
+      // ===== 云端模式：走云函数 =====
+      // 服务端会校验「订单归属」与「状态流转合法性」，客户端不能越权改单
+      await updateOrderStatusViaCloud(orderId.value, status)
+      order.value = {
+        ...order.value!,
+        status,
+        updatedAt,
+        ...(status === 'paid' ? { paidAt: updatedAt } : {}),
+      }
     }
 
-    // 本地同步更新，避免重新请求
-    order.value = { ...order.value!, ...updateData }
     uni.showToast({ title: '操作成功', icon: 'success' })
-  } catch (error) {
+  }
+  catch (error) {
     console.error('更新订单状态失败:', error)
-    uni.showToast({ title: '操作失败，请重试', icon: 'none' })
-  } finally {
+    uni.showToast({ title: error instanceof Error ? error.message : '操作失败，请重试', icon: 'none' })
+  }
+  finally {
     acting.value = false
   }
 }
@@ -266,7 +289,7 @@ async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
 function payOrder() {
   uni.showModal({
     title: '模拟支付',
-    content: `确认支付 ¥${order.value?.totalPrice.toFixed(2)} 吗？\n（真实项目此处调用微信支付）`,
+    content: `确认支付 ¥${order.value ? formatCents(orderAmountCents(order.value)) : '0.00'} 吗？\n（真实项目此处调用微信支付）`,
     confirmText: '确认支付',
     success: (res) => {
       if (res.confirm) {

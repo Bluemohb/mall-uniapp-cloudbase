@@ -72,7 +72,7 @@
         <view class="card-footer">
           <text class="order-time">{{ formatTime(order.createdAt) }}</text>
           <view class="footer-right">
-            <text class="total-price">¥{{ order.totalPrice.toFixed(2) }}</text>
+            <text class="total-price">¥{{ formatCents(orderAmountCents(order)) }}</text>
             <!-- 待支付订单的快捷操作 -->
             <template v-if="order.status === 'pending'">
               <view class="mini-btn ghost" @click.stop="cancelOrder(order)">取消</view>
@@ -94,9 +94,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
-import { app, login } from '@/utils/cloudbase'
+import { app, getUid } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
-import { ORDER_STATUS_MAP, type Order, type OrderStatus } from '@/utils/order'
+import {
+  ORDER_STATUS_MAP,
+  orderAmountCents,
+  updateOrderStatusViaCloud,
+  type Order,
+  type OrderStatus,
+} from '@/utils/order'
+import { formatCents } from '@/utils/money'
 
 // Mock 数据层：开发环境订单读本地，生产构建自动禁用（走云端 orders 集合）
 import { USE_MOCK } from '@/utils/mock'
@@ -109,6 +116,11 @@ import { mockQueryOrders, mockUpdateOrder } from '@/utils/order-mock'
 interface TabItem {
   label: string
   value: '' | OrderStatus   // '' 表示"全部"
+}
+
+/** 订单列表页路由参数 */
+interface OrderListQuery {
+  status?: OrderStatus
 }
 
 const tabs: TabItem[] = [
@@ -139,9 +151,10 @@ const hasMore = ref(true)
  * 个人中心可带 status 参数跳转（如 order-list?status=pending），
  * onLoad 先于 onShow 执行，先设好筛选，onShow 的 refresh() 会按新状态查询
  */
-onLoad((options: any) => {
-  if (options?.status && tabs.some(t => t.value === options.status)) {
-    activeStatus.value = options.status
+onLoad((options?: OrderListQuery) => {
+  const status = options?.status
+  if (status && tabs.some(t => t.value === status)) {
+    activeStatus.value = status
   }
 })
 
@@ -164,19 +177,6 @@ onReachBottom(() => {
 // ============================================================
 // 数据加载（分页）
 // ============================================================
-
-/** 获取用户ID（先查登录态，未登录再匿名登录） */
-async function getUserId(): Promise<string> {
-  const { data } = await app.auth.getSession()
-  let uid = data?.session?.user?.id || ''
-
-  if (!uid) {
-    await login()
-    const res = await app.auth.getSession()
-    uid = res.data?.session?.user?.id || ''
-  }
-  return uid
-}
 
 /**
  * 查询一页订单
@@ -207,25 +207,27 @@ async function fetchOrders() {
     return
   }
 
-  const uid = await getUserId()
-  if (!uid) {
-    console.warn('未获取到用户ID')
+  let uid = ''
+  try {
+    uid = await getUid()
+  }
+  catch (error) {
+    console.error('获取用户标识失败:', error)
+    uni.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
     return
   }
 
   try {
-    // 基础查询条件：属于当前用户
-    let query: any = app
-      .database()
-      .collection('orders')
-      .where({ userId: uid })
-
-    // 非"全部"时追加状态过滤
+    // 一次性构造完整查询条件（避免 any，也避免二次 where 相互覆盖）
+    const condition: { userId: string, status?: OrderStatus } = { userId: uid }
     if (activeStatus.value) {
-      query = query.where({ userId: uid, status: activeStatus.value })
+      condition.status = activeStatus.value
     }
 
-    const { data } = await query
+    const { data } = await app
+      .database()
+      .collection('orders')
+      .where(condition)
       .orderBy('createdAt', 'desc')       // 最新订单在前
       .skip(page.value * pageSize)        // 跳过前面已加载的
       .limit(pageSize)
@@ -297,28 +299,29 @@ function goShopping() {
 function payOrder(order: Order) {
   uni.showModal({
     title: '模拟支付',
-    content: `确认支付 ¥${order.totalPrice.toFixed(2)} 吗？`,
+    content: `确认支付 ¥${formatCents(orderAmountCents(order))} 吗？`,
     confirmText: '确认支付',
     success: async (res) => {
       if (!res.confirm || !order._id) return
       try {
-        const patch = {
-          status: 'paid' as const,
-          paidAt: Date.now(),
-          updatedAt: Date.now(),
-        }
         if (USE_MOCK) {
-          mockUpdateOrder(order._id, patch)
+          mockUpdateOrder(order._id, {
+            status: 'paid',
+            paidAt: Date.now(),
+            updatedAt: Date.now(),
+          })
         }
         else {
-          await app.database().collection('orders').doc(order._id).update(patch)
+          // 云端：走云函数，状态流转与归属由服务端校验
+          await updateOrderStatusViaCloud(order._id, 'paid')
         }
         uni.showToast({ title: '支付成功', icon: 'success' })
         // 本地更新状态，无需重新请求
         order.status = 'paid'
-      } catch (error) {
+      }
+      catch (error) {
         console.error('支付失败:', error)
-        uni.showToast({ title: '支付失败', icon: 'none' })
+        uni.showToast({ title: error instanceof Error ? error.message : '支付失败', icon: 'none' })
       }
     },
   })
@@ -332,21 +335,22 @@ function cancelOrder(order: Order) {
     success: async (res) => {
       if (!res.confirm || !order._id) return
       try {
-        const patch = {
-          status: 'cancelled' as const,
-          updatedAt: Date.now(),
-        }
         if (USE_MOCK) {
-          mockUpdateOrder(order._id, patch)
+          mockUpdateOrder(order._id, {
+            status: 'cancelled',
+            updatedAt: Date.now(),
+          })
         }
         else {
-          await app.database().collection('orders').doc(order._id).update(patch)
+          // 云端：走云函数，状态流转与归属由服务端校验
+          await updateOrderStatusViaCloud(order._id, 'cancelled')
         }
         uni.showToast({ title: '已取消', icon: 'success' })
         order.status = 'cancelled'
-      } catch (error) {
+      }
+      catch (error) {
         console.error('取消订单失败:', error)
-        uni.showToast({ title: '操作失败', icon: 'none' })
+        uni.showToast({ title: error instanceof Error ? error.message : '操作失败', icon: 'none' })
       }
     },
   })

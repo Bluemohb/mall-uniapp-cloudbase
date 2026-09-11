@@ -95,7 +95,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { app, login } from '@/utils/cloudbase'
+import { app, getUid } from '@/utils/cloudbase'
+import { CACHE_KEYS, removeCache } from '@/utils/cache'
 
 // ============================================================
 // 类型定义
@@ -109,6 +110,33 @@ interface AddressForm {
   district: string
   detail: string
   isDefault: boolean
+}
+
+/** 地址文档（数据库读回的结构） */
+interface AddressDoc {
+  _id: string
+  name?: string
+  phone?: string
+  province?: string
+  city?: string
+  district?: string
+  detail?: string
+  isDefault?: boolean
+}
+
+/** 本页路由参数 */
+interface AddressFormQuery {
+  id?: string
+}
+
+/** picker 变更事件（只声明用到的字段） */
+interface ValueChangeEvent<T> {
+  detail: { value: T }
+}
+
+/** switch 的 @change 回调被 uni 声明为 (payload: Event)，这里从事件对象安全取 detail */
+interface DetailEvent extends Event {
+  detail: { value: boolean }
 }
 
 // ============================================================
@@ -136,24 +164,13 @@ const regionLabel = ref('')
 // 初始化（读取 id 参数决定新增/编辑模式）
 // ============================================================
 
-onLoad((query: any) => {
+onLoad((query?: AddressFormQuery) => {
   if (query?.id) {
     isEdit.value = true
     editId.value = query.id
     loadAddress(query.id)
   }
 })
-
-// ============================================================
-// 获取用户ID
-// ============================================================
-
-async function getUserId(): Promise<string> {
-  await login()
-  const { data } = await app.auth.getSession()
-  const uid = data?.session?.user?.id || ''
-  return uid
-}
 
 // ============================================================
 // 加载已有地址（编辑模式）
@@ -164,7 +181,7 @@ async function loadAddress(id: string) {
     const { data } = await app.database().collection('addresses').doc(id).get()
 
     if (data && data.length > 0) {
-      const addr = data[0] as any
+      const addr = data[0] as AddressDoc
       form.name = addr.name || ''
       form.phone = addr.phone || ''
       form.province = addr.province || ''
@@ -186,8 +203,8 @@ async function loadAddress(id: string) {
 // 事件处理
 // ============================================================
 
-function onRegionChange(e: any) {
-  const val = e.detail.value as string[]
+function onRegionChange(e: ValueChangeEvent<string[]>) {
+  const val = e.detail.value
   regionValue.value = val
   form.province = val[0] || ''
   form.city = val[1] || ''
@@ -195,8 +212,9 @@ function onRegionChange(e: any) {
   regionLabel.value = val.join('')
 }
 
-function onSwitchChange(e: any) {
-  form.isDefault = e.detail.value
+function onSwitchChange(e: Event) {
+  // switch 组件把开关值放在事件对象的 detail.value 上
+  form.isDefault = (e as DetailEvent).detail.value
 }
 
 function goBack() {
@@ -236,9 +254,13 @@ async function onSave() {
 
   saving.value = true
   try {
-    const uid = await getUserId()
-    if (!uid) {
-      uni.showToast({ title: '登录状态异常', icon: 'none' })
+    // 统一登录入口（内部按需登录 + 并发去重）
+    let uid = ''
+    try {
+      uid = await getUid()
+    }
+    catch {
+      uni.showToast({ title: '登录状态异常，请稍后重试', icon: 'none' })
       return
     }
 
@@ -281,6 +303,9 @@ async function onSave() {
       uni.showToast({ title: '地址已添加', icon: 'success' })
     }
 
+    // 地址已变更（尤其可能是默认地址），失效订单页的默认地址缓存
+    removeCache(CACHE_KEYS.defaultAddress)
+
     // 延迟返回，让用户看到成功提示
     setTimeout(() => {
       uni.navigateBack()
@@ -301,7 +326,7 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
       .where({ userId, isDefault: true })
 
     const { data: defaults } = await query.get()  // 从数据库查询结果中解构取出 data 字段，并重命名为 defaults
-    const items = (defaults || []) as any[]
+    const items = (defaults || []) as AddressDoc[]
 
     const updates = items // 数组里的每个元素都是 Promise对象
       .filter(item => item._id !== excludeId)
