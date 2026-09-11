@@ -32,8 +32,16 @@ import products from '../../mock/products_02.json'
  * 这里读 process.env 是刻意为之：uni-app / Vite 会在构建期把它静态替换成
  * 'development' | 'production' 字面量（不会真的依赖 Node 的 process 模块）；
  * import.meta.env.VITE_USE_MOCK 同样会在构建期被替换成字符串字面量。
- * 两者都是编译期常量，因此下面的表达式会被常量折叠：未启用时的 mock
- * 数据与 if (USE_MOCK) 分支都会被摇树移除，不会打进线上包。
+ * 两者都是编译期常量，下面的表达式因此会在构建期被折叠成 true / false，
+ * if (USE_MOCK) 分支在编译期就有确定结果。
+ *
+ * ⚠️ 另外要注意两点：
+ * 1. 这两个变量必须在 .env.development / .env.production 里「显式声明」。
+ *    未声明的 VITE_ 变量在构建期拿不到值，开关会退化成运行时读取，
+ *    连常量折叠都会失效。
+ * 2. mock 数据本身能否从产物中移除，取决于 rollup 的 chunk 划分：被多个
+ *    页面共享时会拆出独立的 mock-*.js 公共 chunk，其中的 JSON 会保留在包里
+ *    （不影响运行——开关为 false 时永远不会被读取）。
  */
 const ENV_USE_MOCK = import.meta.env.VITE_USE_MOCK
 
