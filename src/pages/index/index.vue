@@ -19,6 +19,10 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
 
+// 商品卡片公共组件：本项目的 easycom 自动扫描未生效（编译产物里组件未被注册），
+// 必须显式引入，由 <script setup> 自动注册到本页面
+import GoodsCard from '@/components/goods-card/goods-card.vue'
+
 // Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
 import { USE_MOCK, mockGetRecommend } from '@/utils/mock'
 
@@ -190,7 +194,7 @@ onShow(() => {
         <text class="section-more" @click="goProducts">更多 ›</text>
       </view>
 
-      <!-- 商品卡片：公共组件 components/goods-card（easycom 自动引入） -->
+      <!-- 商品卡片：公共组件 components/goods-card（已在 script setup 显式引入） -->
       <view class="product-grid">
         <goods-card
           v-for="product in recommendList"
@@ -343,10 +347,13 @@ onShow(() => {
 }
 
 /* 卡片本身样式已抽到 components/goods-card，这里只负责网格布局 */
+/* 两列栅格：列宽由这里决定，卡片组件内部撑满即可
+   （用 grid 而不是 flex，避免小程序自定义组件宿主节点宽度被内容撑开） */
 .product-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 4%;
+  row-gap: 20rpx;
 }
 
 /* ========== 空状态 ========== */

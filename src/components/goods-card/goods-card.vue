@@ -64,10 +64,12 @@ const originalPriceText = computed(() => {
 
 <style scoped lang="scss">
 .goods-card {
-  width: 48%;
+  /* 宽度交给父级栅格决定（页面 .product-grid 的 grid 列宽），这里撑满组件宿主节点即可。
+     注意：不要在这里写百分比宽度，小程序里组件宿主节点是 flex 子项时宽度由内容撑开，
+     内部再取百分比会算错（卡片会缩水）。 */
+  width: 100%;
   background: $app-bg-card;
   border-radius: $app-radius-md;
-  margin-bottom: 20rpx;
   overflow: hidden;
   box-shadow: $app-shadow-card;
 

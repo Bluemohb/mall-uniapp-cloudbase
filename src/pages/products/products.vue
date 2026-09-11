@@ -46,6 +46,10 @@ import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-
 // Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
 import { USE_MOCK, mockQueryProducts } from '@/utils/mock'
 
+// 商品卡片公共组件：本项目的 easycom 自动扫描未生效（编译产物里组件未被注册），
+// 必须显式引入，由 <script setup> 自动注册到本页面
+import GoodsCard from '@/components/goods-card/goods-card.vue'
+
 // ============================================================
 // 第2部分：定义数据类型（TypeScript 接口）
 // ============================================================
@@ -381,7 +385,7 @@ function clearCategory() {
 
     <view v-if="productList.length > 0" class="product-grid">
       <!--
-        商品卡片：公共组件 components/goods-card（easycom 自动引入）
+        商品卡片：公共组件 components/goods-card（已在 script setup 显式引入）
         v-for 循环渲染商品列表；:key 是 Vue 必需的，用于高效更新列表
       -->
       <goods-card
@@ -469,10 +473,13 @@ function clearCategory() {
 
 /* ========== 商品网格 ========== */
 /* 卡片样式已抽到 components/goods-card，这里只负责 2 列网格布局 */
+/* 两列栅格：列宽由这里决定，卡片组件内部撑满即可
+   （用 grid 而不是 flex，避免小程序自定义组件宿主节点宽度被内容撑开） */
 .product-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 4%;
+  row-gap: 20rpx;
 }
 
 /* ========== 空状态 ========== */
