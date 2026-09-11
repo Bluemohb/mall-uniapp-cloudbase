@@ -22,7 +22,7 @@
 import { app } from '@/utils/cloudbase'
 import { ref, computed, watch } from 'vue'
 
-// Mock 数据层：开发环境读本地 JSON，生产构建自动禁用（走云端）
+// Mock 数据层：由全局开关 USE_MOCK 控制（见 src/utils/mock.ts）
 import { USE_MOCK, mockGetProductById } from '@/utils/mock'
 
 // 金额格式化 + 按用户隔离的购物车存储
@@ -366,7 +366,7 @@ async function addToCart() {
       addTime: Date.now(),
     }
 
-    // 购物车按用户隔离：先解析 uid，再读写 `cart_<uid>`
+    // 购物车存云端 carts 集合（按 userId 归属）：先解析 uid，再读写本地镜像（会自动同步云端）
     await ensureCartUid()
     const cartList = readCart()
 
@@ -384,7 +384,7 @@ async function addToCart() {
       cartList.push(cartItem)
     }
 
-    // 写回本地存储
+    // 写回购物车（落本地镜像 + 后台同步云端 carts）
     writeCart(cartList)
 
     uni.showToast({

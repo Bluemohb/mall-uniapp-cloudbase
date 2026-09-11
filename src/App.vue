@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
 import { checkEnvironment, ensureLogin } from './utils/cloudbase'
+import { syncCartOnStartup } from './utils/cart'
 
 onLaunch(async () => {
   console.log('App Launch')
@@ -17,6 +18,10 @@ onLaunch(async () => {
     const logged = await ensureLogin()
     if (logged) {
       console.log('✅ 启动自动登录成功')
+
+      // 登录后合并购物车：把本地临时车并入云端 carts 集合
+      // （内部幂等，重复调用共享同一结果；失败只影响购物车同步，不阻塞启动）
+      await syncCartOnStartup()
     }
     else {
       console.warn('⚠️ 启动自动登录失败，将在访问需登录的功能时重试')

@@ -137,7 +137,7 @@
 import { ref, computed, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { formatCents, formatMoney, calcTotalCents } from '@/utils/money'
-import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
+import { readCart, syncCartOnStartup, writeCart } from '@/utils/cart'
 import type { CartItem } from '@/utils/cart'
 
 // ============================================================
@@ -168,13 +168,14 @@ const isAllSelected = computed(() =>
 )
 
 // ============================================================
-// 数据加载与持久化（按用户隔离，见 utils/cart.ts）
+// 数据加载与持久化（云端 carts 集合 + 本地镜像，见 utils/cart.ts）
 // ============================================================
 
 async function loadCartData() {
   try {
-    // 先解析 uid，确保读写的是「当前用户」的购物车 key，避免多账号串号
-    await ensureCartUid()
+    // 启动时已合并本地临时车（App.onLaunch），这里 await 同一个 Promise：
+    // 保证「冷启动直接进购物车」时也能读到云端最新数据，且不重复请求
+    await syncCartOnStartup()
     cartList.value = readCart()
   }
   catch (error) {
