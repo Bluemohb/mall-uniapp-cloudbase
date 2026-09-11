@@ -190,32 +190,14 @@ onShow(() => {
         <text class="section-more" @click="goProducts">更多 ›</text>
       </view>
 
+      <!-- 商品卡片：公共组件 components/goods-card（easycom 自动引入） -->
       <view class="product-grid">
-        <view
+        <goods-card
           v-for="product in recommendList"
           :key="product._id"
-          class="product-card"
-          @click="goDetail(product._id)"
-        >
-          <image
-            class="product-image"
-            :src="product.image || '/static/logo.png'"
-            mode="aspectFill"
-          />
-          <view class="product-info">
-            <text class="product-name">{{ product.name }}</text>
-            <view class="price-row">
-              <text class="price-current">¥{{ product.price }}</text>
-              <text
-                v-if="product.originalPrice && product.originalPrice > product.price"
-                class="price-original"
-              >
-                ¥{{ product.originalPrice }}
-              </text>
-            </view>
-            <text v-if="product.sales" class="product-sales">已售 {{ product.sales }}+</text>
-          </view>
-        </view>
+          :product="product"
+          @click="goDetail"
+        />
       </view>
 
       <!-- 推荐为空时显示占位 -->
@@ -360,71 +342,11 @@ onShow(() => {
   color: #999;
 }
 
+/* 卡片本身样式已抽到 components/goods-card，这里只负责网格布局 */
 .product-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-}
-
-.product-card {
-  width: 48.5%;
-  margin-bottom: 20rpx;
-  border-radius: 12rpx;
-  overflow: hidden;
-  background-color: #fafafa;
-}
-
-.product-card:active {
-  transform: scale(0.98);
-  transition: transform 0.15s;
-}
-
-.product-image {
-  width: 100%;
-  height: 300rpx;
-  display: block;
-  background-color: #f0f0f0;
-}
-
-.product-info {
-  padding: 14rpx 16rpx 18rpx;
-}
-
-.product-name {
-  font-size: 26rpx;
-  color: #333;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.4;
-  margin-bottom: 10rpx;
-  min-height: 72rpx;
-}
-
-.price-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8rpx;
-  margin-bottom: 6rpx;
-}
-
-.price-current {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #e7493b;
-}
-
-.price-original {
-  font-size: 22rpx;
-  color: #999;
-  text-decoration: line-through;
-}
-
-.product-sales {
-  font-size: 22rpx;
-  color: #999;
 }
 
 /* ========== 空状态 ========== */

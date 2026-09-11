@@ -178,21 +178,20 @@ async function fetchProducts(isRefresh = false) {
     // 第2步：构建查询
     // collection() 参数是集合名，这里叫 'products'
     // 如果集合不存在，CloudBase 会在首次写入时自动创建
-    let query: any = db.collection('products')
-
-    // 有分类过滤时追加 where 条件（首页分类入口联动）
+    // 有分类过滤时带上 category 条件；无过滤时 where({}) 等价于查全部
+    const condition: { category?: string } = {}
     if (categoryFilter.value) {
-      query = query.where({ category: categoryFilter.value })
+      condition.category = categoryFilter.value
     }
 
-    query = query
-      .orderBy('createTime', 'desc')  // 按创建时间倒序（新商品在前）
-      .skip((currentPage.value - 1) * pageSize) // 跳过前面页的数据
-      .limit(pageSize)                          // 限制返回条数
+    const res = await db.collection('products')
+      .where(condition)
+      .orderBy('createTime', 'desc')              // 按创建时间倒序（新商品在前）
+      .skip((currentPage.value - 1) * pageSize)   // 跳过前面页的数据
+      .limit(pageSize)                            // 限制返回条数
+      .get()
 
-    // 第3步：执行查询
-    // res.data 就是查询结果数组
-    const res = await query.get()
+    // 第3步：res.data 就是查询结果数组
 
     console.log('📦 查询到商品数量:', res.data.length)
 
@@ -382,49 +381,15 @@ function clearCategory() {
 
     <view v-if="productList.length > 0" class="product-grid">
       <!--
-        v-for 循环渲染商品列表
-        :key 是 Vue 必需的，用于高效更新列表
+        商品卡片：公共组件 components/goods-card（easycom 自动引入）
+        v-for 循环渲染商品列表；:key 是 Vue 必需的，用于高效更新列表
       -->
-      <view
+      <goods-card
         v-for="product in productList"
         :key="product._id"
-        class="product-card"
-        @click="goToDetail(product._id)"
-      >
-        <!-- 商品图片 -->
-        <image
-          class="product-image"
-          :src="product.image"
-          mode="aspectFill"
-        />
-
-        <!-- 商品信息 -->
-        <view class="product-info">
-          <!-- 商品名称，最多显示2行 -->
-          <text class="product-name">{{ product.name }}</text>
-
-          <!-- 价格行 -->
-          <view class="price-row">
-            <!-- 当前价格 -->
-            <text class="price-current">¥{{ product.price }}</text>
-            <!-- 原价（如果有折扣） -->
-            <text
-              v-if="product.originalPrice && product.originalPrice > product.price"
-              class="price-original"
-            >
-              ¥{{ product.originalPrice }}
-            </text>
-          </view>
-
-          <!-- 销量标签 -->
-          <text
-            v-if="product.sales"
-            class="product-sales"
-          >
-            已售 {{ product.sales }}+
-          </text>
-        </view>
-      </view>
+        :product="product"
+        @click="goToDetail"
+      />
     </view>
 
     <!--
@@ -503,82 +468,11 @@ function clearCategory() {
 }
 
 /* ========== 商品网格 ========== */
+/* 卡片样式已抽到 components/goods-card，这里只负责 2 列网格布局 */
 .product-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-}
-
-/* ========== 商品卡片 ========== */
-.product-card {
-  width: 48%;                    /* 每行2列，留2%间距 */
-  background: #fff;
-  border-radius: 16rpx;          /* 圆角 */
-  margin-bottom: 20rpx;
-  overflow: hidden;              /* 隐藏超出圆角的内容 */
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);  /* 阴影 */
-}
-
-.product-card:active {
-  transform: scale(0.98);        /* 点击时略微缩小，提供反馈 */
-  transition: transform 0.15s;
-}
-
-/* 商品图片 */
-.product-image {
-  width: 100%;
-  height: 340rpx;                /* 固定高度，保证对齐 */
-  display: block;
-  background-color: #f0f0f0;     /* 图片加载前显示灰色背景 */
-}
-
-/* 商品信息区域 */
-.product-info {
-  padding: 16rpx 20rpx 20rpx;
-}
-
-/* 商品名称 */
-.product-name {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #333;
-  /* 超过2行省略号 */
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.4;
-  margin-bottom: 12rpx;
-  min-height: 78rpx;            /* 即使只有1行也占2行高度，保持对齐 */
-}
-
-/* 价格行 */
-.price-row {
-  display: flex;
-  align-items: baseline;        /* 底部对齐（因为字体大小不同） */
-  gap: 8rpx;
-  margin-bottom: 8rpx;
-}
-
-/* 当前价格（红色加粗） */
-.price-current {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #ff4757;
-}
-
-/* 原价（灰色删除线） */
-.price-original {
-  font-size: 22rpx;
-  color: #999;
-  text-decoration: line-through; /* 删除线效果 */
-}
-
-/* 销量 */
-.product-sales {
-  font-size: 22rpx;
-  color: #999;
 }
 
 /* ========== 空状态 ========== */

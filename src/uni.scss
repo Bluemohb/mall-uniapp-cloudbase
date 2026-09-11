@@ -74,3 +74,30 @@ $uni-color-subtitle: #555; // 二级标题颜色
 $uni-font-size-subtitle: 18px;
 $uni-color-paragraph: #3f536e; // 文章段落颜色
 $uni-font-size-paragraph: 15px;
+
+/* ============================================================
+ * 本项目主题变量（各页面/组件共用，避免色值散落硬编码）
+ * 只需在 <style lang="scss"> 中直接引用，uni.scss 会被自动注入
+ * ============================================================ */
+
+/* 品牌主色（渐变按钮 / 选中态 / 链接） */
+$app-color-primary: #667eea;
+$app-color-primary-deep: #764ba2;
+$app-gradient-primary: linear-gradient(135deg, #667eea, #764ba2);
+
+/* 价格 / 金额相关 */
+$app-color-price: #e7493b;
+$app-color-price-alt: #ff4757;
+
+/* 文字与背景 */
+$app-text-primary: #333;
+$app-text-secondary: #666;
+$app-text-muted: #999;
+$app-bg-page: #f5f5f5;
+$app-bg-card: #fff;
+
+/* 圆角与阴影 */
+$app-radius-sm: 8rpx;
+$app-radius-md: 16rpx;
+$app-radius-pill: 44rpx;
+$app-shadow-card: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
