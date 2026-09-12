@@ -94,6 +94,42 @@ function toErrorMessage(err: unknown): string {
 }
 
 /**
+ * 单次登录请求的兜底超时（毫秒）
+ *
+ * init 里配的 timeout 只作用于 SDK 自身的请求封装。实测在「网络异常」或
+ * 「云开发登录配置不正确」时，signInWithOpenId 的 Promise 会既不 resolve
+ * 也不 reject（请求一直 pending）。而 Promise 只要不 settle，login() 里
+ * 「OpenID 失败 → 回退匿名登录」这条兜底链就永远不会执行，整个应用会停在
+ * 「无会话」状态：所有 await getUid() / ensureLogin() 的页面（购物车、
+ * 收藏、我的、订单、地址）都会永远停在初始态 —— 表现为页面空白。
+ *
+ * 取 15s：与 init 里的 timeout 一致，正常慢网不会被误判为失败。
+ */
+const LOGIN_REQUEST_TIMEOUT_MS = 15000
+
+/**
+ * 给登录请求加兜底超时，保证 Promise 一定会 settle（超时按失败处理）
+ *
+ * 参数用 unknown 而非 Promise<T>：SDK 返回的是自实现的 thenable，
+ * 用 Promise.resolve 包一层可以兼容 thenable 与普通值，避免类型断言。
+ */
+function withTimeout<T>(task: unknown, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms)
+    Promise.resolve(task).then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value as T)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      },
+    )
+  })
+}
+
+/**
  * 初始化云开发实例
  * @param config - 初始化配置
  * @returns 云开发实例
@@ -187,6 +223,12 @@ let loginPromise: Promise<boolean> | null = null
 // 本次生命周期内微信 OpenID 登录是否已成功（成功后不再重复升级）
 let wxOpenIdDone = false
 
+// 本次生命周期内「匿名 → OpenID 升级」是否已自动尝试并失败
+// 失败后不再自动重试：否则每次 ensureLogin() 都要再等满一次超时，
+// 表现为「每个依赖登录的页面都要卡十几秒才出内容」。
+// 用户主动登录（pages/login 走 login()）不受此标记限制。
+let wxOpenIdUpgradeFailed = false
+
 /**
  * 仅尝试微信 OpenID 登录：失败直接抛错，不做匿名回退
  * （用于「匿名会话升级」场景 —— 回退成新的匿名 uid 会让原数据丢失）
@@ -196,7 +238,12 @@ let wxOpenIdDone = false
  * 依赖：小程序后台已配置 request 合法域名 https://{env}.api.tcloudbasegateway.com
  */
 async function signInWithOpenIdOnly(): Promise<SessionInfo> {
-  const res: unknown = await auth.signInWithOpenId({ useWxCloud: false })
+  // ⚠️ 必须带兜底超时：卡住会让「回退匿名登录」永远执行不到（见 withTimeout 注释）
+  const res = await withTimeout<unknown>(
+    auth.signInWithOpenId({ useWxCloud: false }),
+    LOGIN_REQUEST_TIMEOUT_MS,
+    `OpenID 登录请求超过 ${LOGIN_REQUEST_TIMEOUT_MS / 1000} 秒未返回`,
+  )
   console.log('[登录] signInWithOpenId 返回:', JSON.stringify(res)?.slice(0, 500) || String(res))
 
   const err = pickError(res)
@@ -244,7 +291,11 @@ export async function login(): Promise<void> {
         }
 
         // 确实连会话都没有，才做匿名兜底（身份不稳定，仅保证可用）
-        const anonRes: unknown = await auth.signInAnonymously()
+        const anonRes = await withTimeout<unknown>(
+          auth.signInAnonymously(),
+          LOGIN_REQUEST_TIMEOUT_MS,
+          `匿名登录请求超过 ${LOGIN_REQUEST_TIMEOUT_MS / 1000} 秒未返回`,
+        )
         // ⚠️ 匿名登录同样可能"假成功"（失败时返回 { data, error } 而非抛异常）
         const anonErr = pickError(anonRes)
         if (anonErr) {
@@ -259,7 +310,11 @@ export async function login(): Promise<void> {
     }
     else {
       // 非微信端：匿名登录兜底（多端通用）
-      const anonRes: unknown = await auth.signInAnonymously()
+      const anonRes = await withTimeout<unknown>(
+        auth.signInAnonymously(),
+        LOGIN_REQUEST_TIMEOUT_MS,
+        `匿名登录请求超过 ${LOGIN_REQUEST_TIMEOUT_MS / 1000} 秒未返回`,
+      )
       const anonErr = pickError(anonRes)
       if (anonErr) {
         throw anonErr
@@ -314,7 +369,7 @@ async function doEnsureLogin(): Promise<boolean> {
       const anonymous = !!session?.user?.is_anonymous || session?.scope === 'anonymous'
       console.log(`[登录] 已有本地会话 uid=${uid} scope=${session?.scope} is_anonymous=${anonymous}`)
 
-      if (isMpWeixin() && anonymous && !wxOpenIdDone) {
+      if (isMpWeixin() && anonymous && !wxOpenIdDone && !wxOpenIdUpgradeFailed) {
         console.log('[登录] 检测到缓存的匿名会话，尝试用微信 OpenID 升级为正式身份')
         try {
           const next = await signInWithOpenIdOnly()
@@ -323,6 +378,8 @@ async function doEnsureLogin(): Promise<boolean> {
           console.log(`✅ 匿名已升级为微信正式用户（uid: ${uid} → ${newUid}）${same ? ' uid 未变，数据自动继承' : ' ⚠️ uid 已变，请确认数据是否继承'}`)
         }
         catch (e) {
+          // 记下失败，避免后续每个页面都重复一次注定失败的升级（每次要等满超时）
+          wxOpenIdUpgradeFailed = true
           console.warn('匿名升级失败，保持游客身份:', toErrorMessage(e))
         }
       }
@@ -585,8 +642,9 @@ export async function initCloudBase() {
 export async function logout() {
   try {
     await auth.signOut()
-    // 退出后重置标记：下次进入时重新走一次 OpenID 登录
+    // 退出后重置标记：下次进入时重新走一次 OpenID 登录（含自动升级）
     wxOpenIdDone = false
+    wxOpenIdUpgradeFailed = false
     return { success: true, message: '已成功退出登录' }
   }
   catch (error) {
