@@ -30,8 +30,11 @@ import { formatMoney } from '@/utils/money'
 import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
 import type { CartItem } from '@/utils/cart'
 
+// 收藏存储（云端 favorites 集合 + 本地镜像，见 utils/favorite.ts）
+import { isFavorite, syncFavoritesOnStartup, toggleFavorite as toggleFavoriteStore } from '@/utils/favorite'
+
 // 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 
 // ============================================================
 // 第2部分：数据类型定义
@@ -323,11 +326,21 @@ function onSwiperChange(e: SwiperChangeEvent) {
 /**
  * 切换收藏状态
  *
- * 【知识点】本地存储 uni.setStorageSync / getStorageSync
- * 这里用本地存储维护收藏状态，实际项目建议存到数据库
+ * 收藏写云端 favorites 集合（按 userId 归属），本地留一份镜像：
+ * 点击即时生效、离线也可用，后台再同步云端（见 utils/favorite.ts）。
+ * 存的是商品快照（名称/图片/价格），收藏列表页可直接渲染。
  */
 function toggleFavorite() {
-  isFavorited.value = !isFavorited.value
+  if (!product.value) return
+
+  const p = product.value
+  isFavorited.value = toggleFavoriteStore({
+    productId: p._id,
+    name: p.name,
+    image: p.image,
+    price: p.price,   // 收藏是商品级操作，记基础价（不含规格差价）
+    category: p.category,
+  })
 
   uni.showToast({
     title: isFavorited.value ? '已收藏' : '已取消收藏',
@@ -459,6 +472,24 @@ onLoad((options?: ProductDetailQuery) => {
   else {
     uni.showToast({ title: '参数错误', icon: 'error' })
   }
+})
+
+/**
+ * onShow: 每次进入/返回本页都校正收藏态
+ *
+ * 场景：从收藏列表页取消收藏后返回，心形图标要跟着变
+ * （onLoad 只在首次进入时执行一次，回显会停留在旧状态）。
+ * 先按本地镜像立即回显，不等网络；再等启动合并完成后校正一次，
+ * 覆盖「冷启动直接进详情页、云端收藏还没同步下来」的情况。
+ */
+onShow(() => {
+  if (!productId.value) return
+
+  isFavorited.value = isFavorite(productId.value)
+  void syncFavoritesOnStartup().then(() => {
+    if (productId.value)
+      isFavorited.value = isFavorite(productId.value)
+  })
 })
 </script>
 
