@@ -498,6 +498,9 @@ await app.callFunction({
 ```
 
 > 这里放行的只是「能否调用云函数」，函数的登录态校验仍在服务端执行（拿不到 uid 会返回 `UNAUTHENTICATED`）。
+>
+> 定时任务 `closeExpiredOrders` **不需要**加进这份白名单：它由定时触发器在平台侧直接调用，
+> 不走客户端调用鉴权。反过来也建议保持不加 —— 加进去等于允许客户端手动触发一次全量扫描。
 
 ### 配置数据库安全规则（`carts` / `favorites` / `orders` 等「按用户」集合）
 
@@ -571,6 +574,169 @@ App 启动时会把「本地临时车 / 本地临时收藏」**并行**合并进
 >
 > 加上它不引入任何额外的查询条件要求（子集校验只看 `doc.*` 字段，
 > `auth.uid` 不是文档字段），客户端现有的 `where({ userId })` 查询无需改动。
+
+### 库存扣减与销量累加（`createOrder` / `updateOrderStatus`）
+
+`products` 集合的两个字段由订单流程维护（客户端对 `products` 只读，写操作只在云函数里发生）：
+
+| 字段 | 含义 | 何时变化 |
+| --- | --- | --- |
+| `stock` | 剩余库存 | 下单 `-qty`；取消订单 `+qty` |
+| `sales` | 累计销量 | 下单 `+qty`；取消订单 `-qty` |
+
+#### 为什么不会超卖
+
+扣减用的是**条件更新**，把「判断」和「扣减」合并成服务端的一次原子操作：
+
+```js
+// 只有「库存仍然 >= 购买数量」时才会命中并扣减；否则命中 0 条
+await db.collection('products')
+  .where({ _id: productId, stock: _.gte(quantity) })
+  .update({ stock: _.inc(-quantity), sales: _.inc(quantity) })
+```
+
+两个容易踩的坑：
+
+1. **不要写成「先读库存 → 判断 → 再写回」**：两次网络往返之间若插入并发订单，
+   两个请求会读到同一个旧值（如 `stock = 1`）、双双通过判断，同一件商品就卖出了两次。
+2. **不要用「回读文档再比对」来判断是否扣减成功**：并发下同样会误判
+   （A / B 同时读到 `stock = 5`、各买 3 件，A 扣减后库存变成 2，
+   B 回读到的 2 恰好等于「B 自己算出来的 5 - 3 = 2」，于是 B 以为自己也扣成了）。
+   要依据服务端返回的**命中行数** `res.updated`（`@cloudbase/node-sdk` 的 `IUpdateResult`）。
+
+#### 订单快照里的 `stockReservedQty`
+
+下单时每个商品条目都会记下「本次从 `stock` 扣掉了几件」，取消订单时按它精确回补：
+
+| 值 | 含义 | 取消时怎么回补 |
+| --- | --- | --- |
+| `> 0` | 已扣减 | `stock + stockReservedQty`，`sales - quantity` |
+| `0` | 商品没有 `stock` 字段（视为不限库存） | 只回退销量 |
+| 缺省 | 本功能上线前创建的订单，未参与核算 | 不回补（当时也没扣过） |
+
+一个订单会有多个商品，逐条扣减时若第 N 条没库存，前 N-1 条已扣的会**立即回滚**
+（库存不足、扣减异常、订单写库失败三条失败路径都会回滚），
+保证「要么整单扣成功，要么一件都不扣」。
+
+#### 回补只会执行一次
+
+`updateOrderStatus` 把「刚校验过的旧状态」也写进 `where`：
+
+```js
+await db.collection('orders')
+  .where({ _id: orderId, userId: uid, status: 'pending' })   // ← 旧状态充当乐观锁
+  .update({ status: 'cancelled', updatedAt: Date.now() })
+```
+
+校验与修改合成一次原子操作，连点两次「取消订单」时只有第一个请求能命中
+（`updated === 1`），后到的命中 0 条、直接返回 `CONFLICT`，
+因此库存不会被回补两遍。回补放在状态更新**之后**，
+正是因为它依赖这一条「只会成功一次」的更新来做幂等。
+
+同一条更新也是定时任务 `closeExpiredOrders`（见下一节）超时关单的幂等依据：
+定时器重复触发、两次运行在时间上重叠，都只会命中一次；
+用户在超时边缘刚好付款成功时，这条更新命中 0 条，就不会把已支付的订单关掉。
+
+若回补本身失败（例如商品文档已被删除），函数返回 `warning: 'STOCK_RESTORE_FAILED'`
+并打错误日志：此时订单已经是「已取消」，不能返回失败让用户重试
+（重试会撞上「`cancelled` 是终态」而报错），只能留日志人工核对。
+
+**重复「取消」一个已取消的订单会被当作成功**：`updateOrderStatus` 直接返回
+`{ success: true, idempotent: true }` 并且**不再回补**。这是为了兜住
+「用户页面还停留在待支付、订单已经被超时关单」的场景 —— 再点一次取消不该看到报错，
+更不该让库存被补第二次。注意只对 `cancelled` 放行：其他状态照旧走状态机校验，
+否则「给已取消的订单付款」会被误判成成功。
+
+> ⚠️ **重新灌种子数据会重置库存与销量**：`seedProducts` 用 `doc(_id).set()` 覆盖整个文档，
+> 会把 `stock` / `sales` 恢复成 `products.json` 里的初始值。演示前想恢复初始库存可以这么用，
+> 但**别在有真实订单的环境里随手重跑**。
+
+> ⚠️ **待支付订单会占住库存**：本模板是「下单即扣减」，而 `pending` 订单不会自动过期，
+> 长期挂着的未支付订单会一直占用库存。所以需要下一节那个定时任务来兜底
+> —— 不部署它，库存就会只减不增。
+
+### 待支付订单超时自动关单（`closeExpiredOrders` 云函数）
+
+「下单即扣减」必须配一个兜底任务，否则用户下单后不付款，那批库存就永远回不来。
+`closeExpiredOrders` 就是这件事的定时执行者：
+
+```
+每 5 分钟触发一次
+  └─ 查 status = 'pending' 且 createdAt < 现在 - 30 分钟 的订单
+      └─ 逐条 where({ _id, status: 'pending' }).update({ status: 'cancelled' })
+          └─ 只有命中 1 条的那一次，才回补该订单的库存与销量
+```
+
+它和「用户手动取消」走的是**同一条状态流转、同一套回补规则**，
+区别只是一个由用户触发、一个由定时触发。
+
+#### 触发器配置
+
+触发器写在 `cloudbaserc.json` 里，随函数一起下发，不需要在控制台手工配：
+
+```json
+{
+  "name": "closeExpiredOrders",
+  "runtime": "Nodejs18.15",
+  "handler": "index.main",
+  "timeout": 60,
+  "envVariables": {
+    "PAYMENT_TIMEOUT_MINUTES": "30"
+  },
+  "triggers": [
+    { "name": "close-expired-orders", "type": "timer", "config": "0 */5 * * * * *" }
+  ]
+}
+```
+
+```bash
+tcb functions:deploy closeExpiredOrders
+```
+
+> ⚠️ **cron 是 7 段**（秒 分 时 日 月 周 年），不是 Linux 那套 5 段 crontab。
+> `0 */5 * * * * *` = 每 5 分钟的第 0 秒；写成 5 段会配置失败。
+
+#### 两个可调项
+
+| 想改什么 | 改哪里 | 默认值 |
+| --- | --- | --- |
+| 超时时长 | `cloudbaserc.json` 的 `PAYMENT_TIMEOUT_MINUTES`（改完要重新部署） | 30 分钟 |
+| 扫描频率 | `cloudbaserc.json` 的 `triggers[0].config` | 每 5 分钟 |
+
+两者是解耦的：订单会在「创建满 30 分钟之后的第一次扫描」被关掉，
+即最迟第 35 分钟，而不是精确的第 30 分钟。
+
+#### 先 dryRun 再真跑
+
+在 控制台 → 云函数 → `closeExpiredOrders` → 云端测试 里传参即可：
+
+```json
+{ "dryRun": true }
+```
+
+`dryRun` 只回报「会关掉哪些订单」（`wouldClose` 里最多列 20 条），**不写任何数据**。
+确认无误后再执行真实关单：`{}` 按默认 30 分钟；`{ "timeoutMinutes": 0 }`
+把所有待支付订单都视为已超时（会真关单，慎用）。
+
+返回值里的几个计数：
+
+| 字段 | 含义 |
+| --- | --- |
+| `scanned` | 本次检查过的超时订单数（dryRun 下它就等于「会被关掉」的数量） |
+| `closed` / `restoredItems` | 成功关闭的订单数 / 回补的商品条目数（dryRun 下都是 0） |
+| `skipped` | 已被用户先一步付款或取消而跳过（**正常现象，不是错误**） |
+| `wouldClose` / `wouldCloseCount` | 仅 dryRun：会关掉哪些订单（最多列 20 条）/ 一共多少条 |
+| `updateFailures` / `restoreFailures` | 关单写库失败数 / 回补失败数（`success: false` 时看 `errors`） |
+| `truncated` | `true` 表示单次没跑完（超过 200 条或 40 秒预算），剩下的下一轮继续 |
+
+#### 为什么不会重复回补
+
+幂等靠的是与手动取消**完全相同**的那条条件更新（见上一节「回补只会执行一次」）：
+`where({ _id, status: 'pending' })` 保证同一个订单只会被成功关闭一次。
+因此定时器重复触发、两次运行重叠、用户与定时器同时操作，都不会把库存回补两遍。
+
+> 💡 数据量大时，建议在控制台给 `orders` 加一个 `status + createdAt` 的复合索引；
+> 否则每轮的 `where({ status, createdAt: _.lt(deadline) })` 会退化成全表扫描。
 
 ### 跨端身份与数据归属（为什么购物车在另一端看不到）
 
