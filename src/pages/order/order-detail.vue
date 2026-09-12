@@ -279,6 +279,13 @@ async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
   catch (error) {
     console.error('更新订单状态失败:', error)
     uni.showToast({ title: error instanceof Error ? error.message : '操作失败，请重试', icon: 'none' })
+    // 失败最常见的原因是「订单状态已经被别处改掉了」：例如待支付订单刚被定时任务
+    // closeExpiredOrders 超时关单，或用户在别的入口已经操作过。
+    // 此时本地这份 order 是过期数据，重新拉一次让页面回到真实状态，
+    // 否则用户会对着一个假的「待支付」反复点按钮、每次都失败。
+    if (!USE_ORDER_MOCK && orderId.value) {
+      fetchOrderDetail(orderId.value)
+    }
   }
   finally {
     acting.value = false

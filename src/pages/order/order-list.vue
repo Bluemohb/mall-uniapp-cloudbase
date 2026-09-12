@@ -351,6 +351,10 @@ function cancelOrder(order: Order) {
       catch (error) {
         console.error('取消订单失败:', error)
         uni.showToast({ title: error instanceof Error ? error.message : '操作失败', icon: 'none' })
+        // 失败通常意味着订单状态已经变了（例如被定时任务 closeExpiredOrders
+        // 超时关单），本地这条数据已过期：重新拉一次列表，
+        // 别让用户对着一个假的「待支付」反复点取消
+        refresh()
       }
     },
   })
