@@ -1,0 +1,9 @@
+{
+  "name": "closeExpiredOrders",
+  "version": "1.0.0",
+  "description": "超时自动关单云函数：定时扫描待支付订单，超时则关单并回补库存/销量",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.7.0"
+  }
+}

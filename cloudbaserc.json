@@ -34,6 +34,24 @@
       "envVariables": {
         "NODE_ENV": "production"
       }
+    },
+    {
+      "name": "closeExpiredOrders",
+      "description": "超时自动关单：定时扫描待支付订单，超时则关单并回补库存/销量",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 60,
+      "envVariables": {
+        "NODE_ENV": "production",
+        "PAYMENT_TIMEOUT_MINUTES": "30"
+      },
+      "triggers": [
+        {
+          "name": "close-expired-orders",
+          "type": "timer",
+          "config": "0 */5 * * * * *"
+        }
+      ]
     }
   ]
 }
