@@ -357,6 +357,128 @@ VITE_USE_MOCK=false
 顺带一提：这也是排查「本地有数据但页面为空」类问题的第一手线索——
 先看数据源日志，再怀疑权限。
 
+### 开关跟着产物走，不跟着源码走
+
+开关值来自构建时加载的 `.env` 文件，所以**最终走哪套数据源，取决于微信开发者工具打开的是哪个产物目录**：
+
+| 产物目录 | 构建命令 | 加载的配置 | `VITE_USE_MOCK` | 实际数据源 |
+| --- | --- | --- | --- | --- |
+| `dist/dev/mp-weixin` | `pnpm dev:mp-weixin` | `.env.development` | `true` | 本地 Mock |
+| `dist/build/mp-weixin` | `pnpm build:mp-weixin` | `.env.production` | `false` | 云数据库 |
+
+`.env.development` 里的 `VITE_USE_MOCK=true` 只对 **dev 产物**生效。只要开发者工具打开的是
+`dist/build/mp-weixin`，商品列表 / 详情 / 首页推荐 / 搜索就全部走云端，与 Mock 开关的取值无关。
+改完 `.env` 必须**重新构建**，产物里的开关值才会跟着变。
+
+## ⚠️ 改完什么必须「重新编译 + 清缓存」
+
+小程序端（微信开发者工具打开 `dist/dev/mp-weixin`）**不是所有改动都能热更新**。
+同一个坑会表现成「源码已经是 A、跑起来的还是 B」——先查这张表，再怀疑逻辑。
+
+### 必须重新编译（停掉 dev 进程，重跑 `pnpm dev:mp-weixin`）
+
+| 改动的东西 | 为什么热更新救不了 | 备注 |
+| --- | --- | --- |
+| `.env` / `.env.development` / `.env.production` | 环境变量在**构建期**就被静态替换成字面量（见上一节） | dev 改 `.env.development`，build 改 `.env.production` |
+| `mock/products_02.json` | 被 `src/utils/mock.ts` 静态 `import`，整个 JSON 打进产物 | 顺手同步 `cloudfunctions/seedProducts/products.json` |
+| `src/manifest.json` | appId、`mp-weixin` 配置由编译器读取并生成 `app.json` / `project.config.json` | appId 变了要重新打开项目 |
+| `src/pages.json` | 路由 / tabBar / 分包是**编译期**生成的 `app.json`，不是运行时数据 | tabBar 变了建议一并清编译缓存 |
+| `vite.config.ts` / `tsconfig.json` | 构建配置只在 dev 进程启动时读一次 | — |
+| `package.json`（增删依赖） | 依赖图变了 | 先 `pnpm install`，再重启 dev 进程 |
+| `src/static/**`（图片、tabBar 图标等） | 小程序端静态资源不走 HMR，靠编译拷贝 | — |
+| 新增页面 / 组件文件（首次引入） | HMR 对"新文件 + 新路由"组合经常失手 | 表现是"点进去白屏 / 找不到页面" |
+
+只改现有 `*.vue` / `*.ts` 的内容（样式、逻辑）走 HMR 就行，**不需要**重编译。
+
+### 什么时候才需要清缓存
+
+顺序永远是：**先重新编译 → 还不对 → 再清缓存**。清缓存不是第一手段。
+
+微信开发者工具 → 工具栏「清缓存」：
+
+| 选项 | 清掉什么 | 什么时候用 |
+| --- | --- | --- |
+| 清除编译缓存 | 编译中间产物 | 改完 `.env` / `pages.json` / `manifest.json` 后行为没变 |
+| 清除文件缓存 | 本地文件缓存 | 图片、静态资源不刷新 |
+| **清除数据缓存** | **本地 storage**：登录态、本地购物车/收藏、`mock_orders` | **慎用**，见下方警告 |
+| 清除全部缓存 | 以上全部 + 授权数据 | 只在确认要"从零开始"时用 |
+
+> ⚠️ **「清除数据缓存」会清掉本地 storage**：
+> H5 / App 端的匿名登录 uid 存在本地，清了就等于**换了个人**（详见「跨端身份与数据归属」）；
+> 小程序的本地购物车 / 收藏 / `mock_orders` 也会一起消失。
+> 排查「改完不生效」时优先只清**编译缓存 + 文件缓存**，别随手清数据缓存。
+
+### 一分钟自查
+
+出现「源码已改、页面还是老行为」时，按顺序确认：
+
+1. **看启动日志的数据源横幅**（`🧪 [Mock] 商品数据源…` / `☁️ [CloudBase] 商品数据源…`）——先确认走的是哪条路；
+2. **看开发者工具打开的是哪个目录**：`dist/dev/mp-weixin`（dev）还是 `dist/build/mp-weixin`（build）——开关跟着产物走，不跟着源码走；
+3. 停掉 dev 进程重新 `pnpm dev:mp-weixin`，再点一次开发者工具的「编译」；
+4. 仍然不对，再清**编译缓存**（必要时清文件缓存）。
+
+云函数（`cloudfunctions/**`）不属于这条链路：它不进小程序包，改完要**部署**而不是重新编译，见下一节。
+
+## 商品数据初始化（`seedProducts` 云函数）
+
+⚠️ `.env` 的开关只决定「页面读哪边」，**不会把数据搬过去**。本地 Mock 的商品来自
+`mock/products_02.json`，走云端时页面读的是云数据库 `products` 集合——后者需要先灌入数据，
+否则商品列表会为空、商品详情会提示「商品不存在」。
+
+### 单一数据源：`mock/products_02.json`
+
+为了让两种模式看到的商品完全一致，两边共用同一份 JSON：
+
+```
+mock/products_02.json  ──同步──▶  cloudfunctions/seedProducts/products.json
+   （本地 Mock 直接读）                （随云函数代码包上传，服务端读取）
+```
+
+云函数运行在服务端，**只能读取自己目录内的文件**，所以第二份副本是必需的。
+
+### 同步商品数据
+
+改完 `mock/products_02.json` 后，把它复制一份到云函数目录：
+
+```bash
+# Windows PowerShell
+Copy-Item mock/products_02.json cloudfunctions/seedProducts/products.json
+
+# macOS / Linux
+cp mock/products_02.json cloudfunctions/seedProducts/products.json
+```
+
+### 部署并触发写入
+
+```bash
+tcb functions:deploy seedProducts
+```
+
+也可以在控制台「云函数 → seedProducts → 云端测试」中直接触发，**测试参数留空即可**：
+
+```json
+{}
+```
+
+不传参时云函数会自动读取同目录的 `products.json`；数据量很大或想从前端触发时，也可以
+调用时直接传数组（`products.json` 仍作为兜底）：
+
+```typescript
+await app.callFunction({
+  name: 'seedProducts',
+  data: { products: [...] },
+})
+```
+
+写入语义是「按 `_id` 覆盖」（`doc(id).set()`），**重复执行不会产生重复数据**，可安全地反复运行。
+
+### 为什么必须沿用 mock 里的 `_id`
+
+商品详情页用 `doc(id).get()` 精确查询，`id` 取自列表页卡片的 `product._id`。
+写入时沿用 `mock/products_02.json` 中已有的 `_id`（而不是让数据库自动生成 ObjectId），
+能让同一份数据在 Mock 模式与云端模式下 **`_id` 完全相同**，
+这样开关怎么切都不会出现「列表有数据、点进去查不到」的情况。
+
 ## 部署指南
 
 ### 配置云函数安全规则（H5 / 匿名端必需）
@@ -625,6 +747,8 @@ tcb framework deploy
 2. **安全域名**: 根据部署平台配置相应的安全域名
 3. **权限配置**: 注意数据库集合的读写权限设置
 4. **跨端兼容**: 部分 API 在不同平台表现可能不同，注意测试
+5. **改完要重新编译**: 改 `.env` / `mock/products_02.json` / `src/manifest.json` / `src/pages.json` / `vite.config.ts` / `package.json` 依赖等**构建期输入**后，必须重新编译（仍不生效再清编译缓存）；
+   只改现有 `*.vue` / `*.ts` 的内容则交给 HMR 即可。详见上文「⚠️ 改完什么必须『重新编译 + 清缓存』」
 
 ## 相关链接
 
