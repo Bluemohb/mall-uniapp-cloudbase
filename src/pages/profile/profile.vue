@@ -148,6 +148,13 @@ function goAddress() {
   })
 }
 
+/** 跳转我的收藏 */
+function goFavorites() {
+  uni.navigateTo({
+    url: '/pages/favorite/favorite',
+  })
+}
+
 /** 打开云开发文档 */
 function openDocs() {
   // #ifdef H5
@@ -238,6 +245,11 @@ onShow(() => {
       <view class="menu-item" @click="goAddress">
         <text class="menu-icon">📍</text>
         <text class="menu-text">收货地址</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @click="goFavorites">
+        <text class="menu-icon">❤️</text>
+        <text class="menu-text">我的收藏</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="goCart">
