@@ -377,12 +377,19 @@ VITE_USE_MOCK=false
 
 > 这里放行的只是「能否调用云函数」，函数的登录态校验仍在服务端执行（拿不到 uid 会返回 `UNAUTHENTICATED`）。
 
-### 配置数据库安全规则（`carts` / `orders` 等「按用户」集合）
+### 配置数据库安全规则（`carts` / `favorites` / `orders` 等「按用户」集合）
 
-购物车存在云端 `carts` 集合，一个用户一条文档（`{ userId, items, createdAt, updatedAt }`）。
-App 启动时会把「本地临时车」合并进云端（见 `src/utils/cart.ts`），旧版本的本地购物车会自动迁移，无需手工处理。
+购物车与收藏都是「一个用户一条文档」，分别存在云端 `carts` 与 `favorites` 集合：
 
-集合安全规则必须按 `userId` 判定归属（`carts` 集合不存在时先新建）：
+| 集合 | 文档结构 | 存储层 |
+| --- | --- | --- |
+| `carts` | `{ userId, items, createdAt, updatedAt }` | `src/utils/cart.ts` |
+| `favorites` | `{ userId, items, createdAt, updatedAt }` | `src/utils/favorite.ts` |
+
+App 启动时会把「本地临时车 / 本地临时收藏」**并行**合并进各自云端集合，
+旧版本的本地数据会自动迁移，无需手工处理。
+
+两者的安全规则完全一致，必须按 `userId` 判定归属（集合不存在时先新建）：
 
 ```json
 {
@@ -438,7 +445,7 @@ App 启动时会把「本地临时车」合并进云端（见 `src/utils/cart.ts
 >
 > 订单虽然有云函数兜底写入 `userId`，但安全规则是最后一道防线，
 > 应当自身闭环，而不是依赖「上游数据永不脏」。
-> `carts` 同样带该守卫，两个集合保持一致。
+> `carts` / `favorites` 同样带该守卫，三个集合保持一致。
 >
 > 加上它不引入任何额外的查询条件要求（子集校验只看 `doc.*` 字段，
 > `auth.uid` 不是文档字段），客户端现有的 `where({ userId })` 查询无需改动。
