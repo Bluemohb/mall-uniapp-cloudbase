@@ -54,6 +54,15 @@ export interface OrderItem {
   price: number
   specs: string   // 规格文本，如 "黑色 / XL"，无规格则空串
   quantity: number
+  /**
+   * 下单时从商品 stock 扣掉的件数（服务端写入的订单快照字段）
+   * - > 0：已扣减，取消订单时按该值回补
+   * - 0：商品未设置 stock（视为不限库存），只累加过销量
+   * - 缺省：本功能上线前创建的订单，未参与库存/销量核算，取消时不回补
+   *
+   * 客户端只读，不要手工构造该字段（服务端会在 createOrder 里按实际扣减写入）
+   */
+  stockReservedQty?: number
 }
 
 /**

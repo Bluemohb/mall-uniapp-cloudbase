@@ -17,6 +17,11 @@
  * - mockGetOrderById     ↔ orders.doc(id).get()
  * - mockUpdateOrder      ↔ orders.doc(id).update()
  * - mockQueryOrders      ↔ orders.where({...}).orderBy('createdAt','desc').skip/limit
+ *
+ * 【Mock 模式不做库存/销量核算】
+ * mock 商品来自 mock/products_02.json（只读夹具），没有可写的库存，
+ * 所以「下单扣库存 / 取消回补」只在云端模式发生，mock 订单也不会带
+ * stockReservedQty 字段。这是与云端语义的已知差异，不是 bug。
  * ============================================================
  */
 import type { Order, OrderStatus } from './order'
