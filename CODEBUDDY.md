@@ -7,6 +7,14 @@ inclusion: always
 
 # CloudBase AI Development Rules Guide
 
+## Project Conventions (User-Defined)
+
+**包管理器固定为 pnpm。** 能用 pnpm 就不用 npm：安装依赖 `pnpm install`、执行脚本 `pnpm run <script>`、临时执行 `pnpm dlx <pkg>`、全局安装 `pnpm add -g`。
+
+每完成一个任务就Git提交一次。
+
+默认不提醒用户 git push，仅当用户明确要求时，才执行或讨论 push。
+
 ## Activation Contract
 
 This file is a compatibility projection of the CloudBase routing contract. Keep its semantics aligned with the CloudBase source guideline, and express routing with stable skill identifiers rather than repo-specific file paths.
