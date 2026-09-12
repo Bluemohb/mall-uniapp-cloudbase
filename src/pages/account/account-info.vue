@@ -15,6 +15,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { auth, ensureLogin, getUserIdentities, isMpWeixin, linkIdentityWithProvider, logout } from '../../utils/cloudbase'
 import { resetCartUid } from '../../utils/cart'
+import { resetFavoriteUid } from '../../utils/favorite'
 import { getWechatProfile, setWechatProfile } from '../../utils/index'
 
 const userInfo = ref<any>(null)
@@ -295,8 +296,9 @@ async function handleLogout() {
       if (res.confirm) {
         try {
           await logout()
-          // 清除购物车用户标识，避免下次登录读到上一个账号的购物车
+          // 清除购物车 / 收藏的用户标识，避免下次登录读到上一个账号的数据
           resetCartUid()
+          resetFavoriteUid()
           session.value = null
           userInfo.value = null
           uni.showToast({

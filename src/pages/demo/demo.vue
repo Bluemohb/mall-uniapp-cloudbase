@@ -8,6 +8,7 @@ import {
   logout,
 } from '../../utils/cloudbase'
 import { resetCartUid } from '../../utils/cart'
+import { resetFavoriteUid } from '../../utils/favorite'
 
 // 响应式数据
 const loading = ref(false)
@@ -101,8 +102,9 @@ async function handleLogout() {
   loading.value = true
   try {
     await logout()
-    // 清除购物车用户标识，避免下次登录读到上一个账号的购物车
+    // 清除购物车 / 收藏的用户标识，避免下次登录读到上一个账号的数据
     resetCartUid()
+    resetFavoriteUid()
     loginStatus.value = '已退出'
     uni.showToast({ title: '已退出登录', icon: 'success' })
   }
