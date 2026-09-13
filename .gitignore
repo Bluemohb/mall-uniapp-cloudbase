@@ -12,6 +12,9 @@ node_modules
 dist
 *.local
 
+# 临时文件（调试 / AI 协作过程产物，勿提交）
+.tmp-*
+
 # Editor directories and files
 .idea
 *.suo

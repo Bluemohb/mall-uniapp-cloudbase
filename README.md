@@ -1016,6 +1016,54 @@ tcb framework deploy
 5. **改完要重新编译**: 改 `.env` / `mock/products_02.json` / `src/manifest.json` / `src/pages.json` / `vite.config.ts` / `package.json` 依赖等**构建期输入**后，必须重新编译（仍不生效再清编译缓存）；
    只改现有 `*.vue` / `*.ts` 的内容则交给 HMR 即可。详见上文「⚠️ 改完什么必须『重新编译 + 清缓存』」
 
+## 临时文件与删除命令注意事项
+
+### 云函数代码包自带 `node_modules`
+
+以「安装依赖」方式部署的函数（包括环境里由云模板生成的 `wxpayFunctions`），其代码包内**包含 `node_modules`**。
+对照函数详情里的 `CodeSize` 就能看出来：本项目 `wxpayOrderCallback` 约 **2.98 MB**，
+而它本身的源码只有 `index.js` + `package.json`。
+
+因此**下载这类函数的代码会一次带下几百上千个文件**，解压到项目里既污染工作区，也会让 `git status` 变成一片噪音。
+
+> 只读源码时直接读工具返回的内容即可，**不要为了看几个文件先把整包解压到仓库里**。
+
+### 临时目录一律放系统临时目录
+
+| 做法 | 评价 |
+| --- | --- |
+| 解压到仓库内（如 `.tmp-wxpay`） | ❌ 污染工作区；删除时还会触发 IDE 的大批量文件确认 |
+| 解压到 `$env:TEMP\<name>` | ✅ 推荐：与仓库隔离，删除时不会扫描项目目录 |
+| 不落盘，直接读工具返回内容 | ✅ 首选：连删都不用删 |
+
+`.gitignore` 已加入 `.tmp-*` 作为兜底，但**更好的做法是一开始就别在仓库里建**。
+
+### 删除命令的写法
+
+`Remove-Item -Recurse -Force` 有几个容易误解的点：
+
+| 写法 | 实际作用 |
+| --- | --- |
+| `-Force` | 只处理隐藏 / 只读文件，**不等于跳过确认** |
+| `-ErrorAction SilentlyContinue` | 只压制**错误输出**，与确认提示无关 |
+| `-Confirm:$false` | 这才是显式关闭确认提示 |
+
+另外三点：
+
+- `Remove-Item -Force` 是**永久删除、不进回收站**，删错无法撤销；
+- 「递归 + 强制删除」这类不可逆命令，AI 助手的终端工具会先扫描目标范围、列出将被删除的文件数交给你确认
+  （本次弹出的「将删除 500+ 个文件」即由此而来）。**这是安全护栏，不是故障**——
+  文件数异常偏大时，先想想是不是把 `node_modules` 一起圈进去了；
+- 删除时**用绝对路径**并先判断存在性，避免相对路径在 CWD 意外变化时删错东西：
+
+```powershell
+# 推荐：绝对路径 + 存在性判断 + 显式表态
+$tmp = Join-Path $env:TEMP 'wxpay-inspect'
+if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force -Confirm:$false }
+```
+
+一句话：**不在仓库里制造临时文件，就不用面对删除确认。**
+
 ## 相关链接
 
 - [UniApp 官方文档](https://uniapp.dcloud.io/)
