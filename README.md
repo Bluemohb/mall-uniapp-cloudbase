@@ -436,7 +436,7 @@ mock/products_02.json  ──同步──▶  cloudfunctions/seedProducts/produc
 
 云函数运行在服务端，**只能读取自己目录内的文件**，所以第二份副本是必需的。
 
-### 同步商品数据
+### 同步商品数据走 CloudBase MCP 查询
 
 改完 `mock/products_02.json` 后，把它复制一份到云函数目录：
 
@@ -493,7 +493,8 @@ await app.callFunction({
 {
   "*": { "invoke": "auth != null && auth.loginType != 'ANONYMOUS'" },
   "createOrder": { "invoke": "auth != null" },
-  "updateOrderStatus": { "invoke": "auth != null" }
+  "updateOrderStatus": { "invoke": "auth != null" },
+  "wxpayOrder": { "invoke": "auth != null" }
 }
 ```
 
@@ -501,6 +502,11 @@ await app.callFunction({
 >
 > 定时任务 `closeExpiredOrders` **不需要**加进这份白名单：它由定时触发器在平台侧直接调用，
 > 不走客户端调用鉴权。反过来也建议保持不加 —— 加进去等于允许客户端手动触发一次全量扫描。
+>
+> 支付回调 `wxpayOrderCallback` 同理**不要**加：它由微信支付在服务端调用，加进去等于
+> 允许客户端伪造「支付成功」通知（不过函数里还有一层金额/订单校验兜着）。
+> `wxpayOrder` 是按需加 —— 它走 `wx.cloud` 通道调用，若环境级规则拦住了微信身份，
+> 表现为支付时提示「调用支付服务失败」。
 
 ### 配置数据库安全规则（`carts` / `favorites` / `orders` 等「按用户」集合）
 
@@ -738,6 +744,99 @@ tcb functions:deploy closeExpiredOrders
 > 💡 数据量大时，建议在控制台给 `orders` 加一个 `status + createdAt` 的复合索引；
 > 否则每轮的 `where({ status, createdAt: _.lt(deadline) })` 会退化成全表扫描。
 
+### 真实微信支付（`wxpayOrder` + `wxpayOrderCallback` 云函数）
+
+待支付订单的「立即支付」走的是**真实微信支付**（仅微信小程序端；H5 / App 端自动退回模拟支付）。
+
+```
+小程序页 payOrder()
+  ├─ wx.cloud.callFunction('wxpayOrder', { action: 'create', orderId })
+  │     └─ 校验归属/状态 → 用服务端金额统一下单（out_trade_no = orderNo）→ 返回收银台参数
+  ├─ wx.requestPayment({ timeStamp, nonceStr, package, signType, paySign })   ← 用户付款
+  └─ wx.cloud.callFunction('wxpayOrder', { action: 'query', orderId })
+        └─ 主动查单，trade_state = SUCCESS 则把订单置为已支付（幂等）
+
+微信支付 ──支付结果通知──▶ wxpayOrderCallback ──▶ 同样把订单置为已支付（幂等）
+```
+
+| 云函数 | 触发方 | 职责 |
+| --- | --- | --- |
+| `wxpayOrder` | 小程序（`wx.cloud` 通道） | 统一下单 + 主动查单，并把支付结果同步回订单状态 |
+| `wxpayOrderCallback` | 微信支付（服务端） | 支付结果通知 → 幂等置为已支付 |
+
+几个刻意的设计：
+
+1. **金额只在服务端算**：`amount.total` 取自订单快照 `totalPriceCents`，客户端传不了金额，
+   否则「定价权」就跑到了用户手里。
+2. **`out_trade_no` 复用 `orderNo`**：支付回调只回传 `out_trade_no`，
+   直接复用它就能一步反查到本地订单，不需要额外维护映射表
+   （下单成功后仍会把 `outTradeNo` 记进 `orders.payment` 供人工核对）。
+3. **状态由服务端写入**：`wx.requestPayment` 的 success 只代表「用户付了」，
+   页面的做法是回过头调用 `query` 确认，再刷新订单 —— 客户端不自己改状态。
+4. **幂等靠条件更新**：`where({ _id, userId, status: 'pending' }).update({ status: 'paid' })`，
+   校验与修改是一次原子操作；回调与主动查单可能同时到达，只有第一个能命中。
+
+> 💡 **付了钱但订单已被超时关单**（用户在 30 分钟边缘付款）时，
+> 服务端会返回 `warning: 'ORDER_CANCELLED_BUT_PAID'` 并打错误日志：
+> 钱已经收到、订单却是 `cancelled`，属于**需要人工核对/退款**的情况，这里不静默吞掉。
+
+#### 为什么支付必须单独走 `wx.cloud.callFunction`
+
+项目其余业务都走 `@cloudbase/js-sdk` 的 HTTPS 网关（`app.callFunction`），**只有支付这一个环节例外**：
+
+| 通道 | 服务端能拿到的身份 | 能否下单 |
+| --- | --- | --- |
+| `app.callFunction`（HTTPS 网关） | CloudBase 用户标识 `uid`（如 `daVOWZdt…`） | ❌ 微信支付 JSAPI 要的是 `payer.openid` |
+| `wx.cloud.callFunction` | `getWXContext().OPENID`（微信 openid） | ✅ |
+
+两者**不是一回事**：`uid` 是 CloudBase 的用户标识（登录态里的那个），
+`openid` 是微信侧的身份。走网关调用时函数里压根拿不到 openid，
+而微信支付 JSAPI 下单 `payer.openid` 是必填项，所以支付单独走小程序原生通道。
+
+> ⚠️ 因此 `wxpayOrder` **不能**用 `app.callFunction` 调用，会直接返回 `NEED_WX_OPENID`。
+> `src/utils/payment.ts` 已经把这件事封装好了，页面不用关心。
+
+#### 控制台配置（必做）
+
+以下三步都在 CloudBase 控制台完成，缺任何一步「下单」都会失败：
+
+1. **配置商户凭证**：控制台 →「微信支付」（微信支付云模板 / 扩展能力）→
+   填入**商户号（mchId）**、**APIv3 密钥**、**API 证书**。凭证由平台加密保管，
+   不需要（也**不应该**）写进代码或环境变量。
+2. **绑定小程序**：确认商户号已与当前小程序 appid 完成绑定（否则下单会报 openid 不合法）。
+3. **配置支付通知云函数**：在微信支付模板参数里，把「接收支付通知的云函数」设为
+   `scf:wxpayOrderCallback`。
+   **不配这一步不会导致收不到钱，但订单状态只能靠前端主动查单兜底**
+   —— 用户付完钱直接关掉小程序时，订单就会一直停在待支付。
+
+#### 部署
+
+```bash
+tcb functions:deploy wxpayOrder
+tcb functions:deploy wxpayOrderCallback
+```
+
+> `wxpayOrder` 依赖 `wx-server-sdk`（取微信上下文）与 `@cloudbase/node-sdk`（读写订单）。
+> 用 MCP / CLI 部署时会自动安装依赖，无需手工 `npm install`。
+
+#### 排错对照表
+
+| 现象 / 返回值 | 原因 | 处理 |
+| --- | --- | --- |
+| `Illegal base64 character …`、`MISSING_CREDENTIALS` | 商户凭证未配置或配置有误 | 回到控制台重配商户号 / APIv3 密钥 / 证书 |
+| `NEED_WX_OPENID` | 用 `app.callFunction`（网关通道）调了支付函数 | 改为 `wx.cloud.callFunction`；页面用 `utils/payment.ts` |
+| `openid 不合法` / `openid 不匹配` | 商户号没和当前小程序 appid 绑定 | 在微信支付侧完成绑定 |
+| `FORBIDDEN` | 调用者身份对不上订单归属 | 看日志里脱敏后的 `uid` / `openid` / `orderUserId` 定位是哪一侧不一致 |
+| 付款成功、订单还是「待支付」 | 支付通知云函数没配 / 回调延迟 | 配 `scf:wxpayOrderCallback`；前端主动查单已能兜住大部分场景 |
+| 页面提示「订单已取消但收到支付成功」 | 超时关单与付款撞车 | 人工核对并退款（服务端已打错误日志） |
+
+#### 与模板自带的 `wxpayFunctions` 是什么关系
+
+环境里由「微信支付云模板」生成的 `wxpayFunctions` 是一段**示例代码**：
+商品描述写死成 `'<商品描述>'`、金额写死成 1 分、订单号随机生成，不接收任何业务参数，
+**无法用来支付某一笔真实订单**。所以本项目没有改它，而是直接调用它底层的支付模块
+（`cloudbase_module` 的 `wxpay_order`），自己传 `description` / `amount` / `out_trade_no` / `payer.openid`。
+
 ### 跨端身份与数据归属（为什么购物车在另一端看不到）
 
 上面按 `userId` 判定归属，解决的是「两端判定标准是否一致」，
@@ -878,6 +977,7 @@ const config = {
 项目包含完整的云开发功能演示：
 
 - **认证功能**: 匿名登录/退出、手机验证码登录、邮箱验证码登录、密码登录、微信小程序 openId 静默登录
+- **微信支付**: 服务端统一下单 + 支付回调改状态（仅微信小程序端；其他端为模拟支付）
 - **云函数调用**: 调用示例云函数
 - **云托管**: 调用云托管服务
 - **数据库操作**: 增加和查询数据

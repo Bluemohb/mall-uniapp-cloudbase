@@ -5,7 +5,7 @@
   这个页面展示了：
   - 单条订单的完整信息（状态/地址/商品/金额/时间）
   - 按订单状态显示不同的操作按钮，实现状态流转：
-      待支付 → 模拟支付 / 取消订单
+      待支付 → 微信支付 / 取消订单（非微信端自动退回「模拟支付」）
       已支付 → 模拟发货 / 确认收货
       已发货 → 确认收货
 
@@ -17,6 +17,8 @@
   【知识点】
   - doc(id).get() 查询单条数据（和商品详情页一样）
   - doc(id).update(data) 更新指定字段
+  - 真实微信支付：云函数统一下单 + wx.requestPayment 唤起收银台 + 主动查单确认，
+    全部封装在 src/utils/payment.ts；订单状态最终由服务端回调/查单写入
   - 模拟支付：真实微信支付需要商户号，用"弹窗确认"代替，
     并在注释中说明真实接入方式（uni.requestPayment）
   ============================================================
@@ -99,7 +101,7 @@
       <view class="action-bar">
         <template v-if="order.status === 'pending'">
           <view class="action-btn ghost" @click="cancelOrder">取消订单</view>
-          <view class="action-btn primary" @click="payOrder">模拟支付</view>
+          <view class="action-btn primary" @click="payOrder">{{ canPayWithWechat ? '立即支付' : '模拟支付' }}</view>
         </template>
         <template v-else-if="order.status === 'paid'">
           <view class="action-btn ghost" @click="shipOrder">模拟发货</view>
@@ -134,6 +136,9 @@ import {
   type OrderStatus,
 } from '@/utils/order'
 import { formatCents, formatMoney } from '@/utils/money'
+
+// 真实微信支付：云函数统一下单 + 唤起收银台 + 主动查单（见 utils/payment.ts）
+import { canUseWechatPay, payOrderWithWechat, type WechatPayResult } from '@/utils/payment'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
@@ -180,6 +185,14 @@ const statusTip = computed(() => {
     default: return ''
   }
 })
+
+/**
+ * 是否可以用真实微信支付
+ *
+ * 三个前提：非 Mock 模式 + 微信小程序端 + wx.cloud 通道可用（见 utils/payment.ts）。
+ * 任一不满足就退回「模拟支付」，避免给出一个必然失败的按钮。
+ */
+const canPayWithWechat = computed(() => !USE_ORDER_MOCK && canUseWechatPay())
 
 // ============================================================
 // 页面生命周期
@@ -293,19 +306,22 @@ async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
 }
 
 /**
- * 模拟支付（待支付 → 已支付）
+ * 支付入口（待支付 → 已支付）
  *
- * 【真实支付怎么接？】
- * 1. 前端调云函数创建支付单（预下单）
- * 2. 云函数用微信支付接口返回支付参数
- * 3. 前端 uni.requestPayment({ timeStamp, nonceStr, package, signType, paySign })
- * 4. 支付成功后（success 回调）再调用云函数确认订单已支付
- * 需要企业资质开通微信支付商户号，本教程用"模拟支付"演示状态流转。
+ * 两条路径：
+ *  - 可用真实支付（微信小程序端）：云函数统一下单 → uni.requestPayment 唤起收银台
+ *    → 主动查单确认，见 utils/payment.ts
+ *  - 其他情况（H5 / App / 未配置环境）：保留「模拟支付」，保证模板多端仍可跑通
  */
 function payOrder() {
+  if (canPayWithWechat.value) {
+    confirmWechatPay()
+    return
+  }
+
   uni.showModal({
     title: '模拟支付',
-    content: `确认支付 ¥${order.value ? formatCents(orderAmountCents(order.value)) : '0.00'} 吗？\n（真实项目此处调用微信支付）`,
+    content: `确认支付 ¥${order.value ? formatCents(orderAmountCents(order.value)) : '0.00'} 吗？\n（当前环境无法调起微信支付，仅演示状态流转）`,
     confirmText: '确认支付',
     success: (res) => {
       if (res.confirm) {
@@ -313,6 +329,67 @@ function payOrder() {
       }
     },
   })
+}
+
+/**
+ * 真实微信支付（二次确认 → 调起收银台 → 以服务端查单结果刷新页面）
+ *
+ * 注意：这里不再直接改订单状态 —— 状态由服务端（支付回调 / 主动查单）写入，
+ * 客户端只负责「调起支付」和「展示服务端确认后的结果」。
+ */
+async function confirmWechatPay() {
+  if (acting.value) return
+
+  const amount = order.value ? formatCents(orderAmountCents(order.value)) : '0.00'
+  const confirmed = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: '微信支付',
+      content: `确认支付 ¥${amount} 吗？`,
+      confirmText: '确认支付',
+      success: res => resolve(!!res.confirm),
+      fail: () => resolve(false),
+    })
+  })
+  if (!confirmed) return
+
+  acting.value = true
+  uni.showLoading({ title: '正在调起支付...', mask: true })
+
+  let result: WechatPayResult | null = null
+  try {
+    result = await payOrderWithWechat(orderId.value)
+  }
+  catch (error) {
+    // payOrderWithWechat 已把可预期失败转成返回值，这里兜住真正异常的兜底
+    console.error('微信支付流程异常:', error)
+  }
+  finally {
+    // 先关闭 loading 再弹提示：两者共用同一个交互层，顺序反了提示会被吃掉
+    uni.hideLoading()
+    acting.value = false
+  }
+
+  if (!result) {
+    uni.showModal({ title: '支付失败', content: '支付流程出现异常，请稍后重试', showCancel: false })
+  }
+  else if (result.paid) {
+    uni.showToast({ title: '支付成功', icon: 'success' })
+  }
+  else if (result.cancelled) {
+    uni.showToast({ title: '已取消支付', icon: 'none' })
+  }
+  else {
+    // 没拿到成功也不等于失败：钱可能已付、状态还没同步完，如实提示即可
+    uni.showModal({
+      title: '支付未完成',
+      content: result.message || '请稍后在订单列表查看支付结果',
+      showCancel: false,
+    })
+  }
+
+  // 无论结果如何都回读一次：成功要展示服务端写入的新状态，
+  // 失败也可能是「订单刚被超时关单」，都需要让页面回到真实状态
+  await fetchOrderDetail(orderId.value)
 }
 
 /** 取消订单（待支付 → 已取消） */

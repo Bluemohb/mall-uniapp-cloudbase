@@ -1,0 +1,10 @@
+{
+  "name": "wxpayOrder",
+  "version": "1.0.0",
+  "description": "微信支付下单云函数：服务端统一下单 + 主动查单，并把支付结果同步回订单状态",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.7.0",
+    "wx-server-sdk": "~2.4.0"
+  }
+}

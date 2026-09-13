@@ -52,6 +52,26 @@
           "config": "0 */5 * * * * *"
         }
       ]
+    },
+    {
+      "name": "wxpayOrder",
+      "description": "微信支付下单：服务端统一下单 + 主动查单，支付结果同步回订单状态",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 20,
+      "envVariables": {
+        "NODE_ENV": "production"
+      }
+    },
+    {
+      "name": "wxpayOrderCallback",
+      "description": "微信支付回调：幂等地把订单从待支付置为已支付（需在控制台配置为接收支付通知的云函数）",
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "timeout": 20,
+      "envVariables": {
+        "NODE_ENV": "production"
+      }
     }
   ]
 }

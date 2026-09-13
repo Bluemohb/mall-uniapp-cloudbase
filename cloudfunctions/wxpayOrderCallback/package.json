@@ -1,0 +1,9 @@
+{
+  "name": "wxpayOrderCallback",
+  "version": "1.0.0",
+  "description": "微信支付回调云函数：幂等地把订单从待支付置为已支付",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.7.0"
+  }
+}

@@ -105,6 +105,9 @@ import {
 } from '@/utils/order'
 import { formatCents } from '@/utils/money'
 
+// 真实微信支付：云函数统一下单 + 唤起收银台 + 主动查单（见 utils/payment.ts）
+import { canUseWechatPay, payOrderWithWechat, type WechatPayResult } from '@/utils/payment'
+
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
 import { mockQueryOrders, mockUpdateOrder } from '@/utils/order-mock'
@@ -293,13 +296,66 @@ function goShopping() {
 }
 
 /**
- * 模拟支付（列表页快捷操作）
- * 与详情页 payOrder 逻辑一致，独立实现方便列表页单独使用
+ * 支付（列表页快捷操作）
+ *
+ * 与详情页 payOrder 保持一致的两条路径：
+ *  - 微信小程序端：真实微信支付（云函数下单 → 唤起收银台 → 主动查单确认）
+ *  - 其他端：模拟支付，保证模板多端可跑通
+ *
+ * 真实支付的结果以服务端写入为准，所以无论成败都 refresh() 重新拉一次列表，
+ * 而不是像模拟支付那样直接改本地这条数据。
  */
-function payOrder(order: Order) {
+async function payOrder(order: Order) {
+  if (!order._id) return
+
+  const amount = formatCents(orderAmountCents(order))
+
+  if (!USE_ORDER_MOCK && canUseWechatPay()) {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: '微信支付',
+        content: `确认支付 ¥${amount} 吗？`,
+        confirmText: '确认支付',
+        success: res => resolve(!!res.confirm),
+        fail: () => resolve(false),
+      })
+    })
+    if (!confirmed) return
+
+    uni.showLoading({ title: '正在调起支付...', mask: true })
+    let result: WechatPayResult | null = null
+    try {
+      result = await payOrderWithWechat(order._id)
+    }
+    catch (error) {
+      console.error('微信支付流程异常:', error)
+    }
+    finally {
+      // 先关闭 loading 再弹提示：两者共用同一个交互层
+      uni.hideLoading()
+    }
+
+    if (result?.paid) {
+      uni.showToast({ title: '支付成功', icon: 'success' })
+    }
+    else if (result?.cancelled) {
+      uni.showToast({ title: '已取消支付', icon: 'none' })
+    }
+    else {
+      uni.showModal({
+        title: '支付未完成',
+        content: result?.message || '请稍后在订单列表查看支付结果',
+        showCancel: false,
+      })
+    }
+
+    await refresh()
+    return
+  }
+
   uni.showModal({
     title: '模拟支付',
-    content: `确认支付 ¥${formatCents(orderAmountCents(order))} 吗？`,
+    content: `确认支付 ¥${amount} 吗？`,
     confirmText: '确认支付',
     success: async (res) => {
       if (!res.confirm || !order._id) return
