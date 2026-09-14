@@ -664,6 +664,15 @@ await app.callFunction({
 | `carts` | `{ userId, items, createdAt, updatedAt }` | `src/utils/cart.ts` |
 | `favorites` | `{ userId, items, createdAt, updatedAt }` | `src/utils/favorite.ts` |
 
+两个存储层共用同一个骨架工厂 `src/utils/user-scoped-store.ts`
+（uid 缓存 / 本地镜像 / 临时区 / 单飞推送 / 启动合并），
+各自只提供三样差异：条目结构、变化签名、合并规则。
+
+> **`addresses` 不套这个工厂**：它是「一个用户多条文档 + 逐条 `doc(id)` 增删改」，
+> 而工厂假设的是「一个用户一条文档 + 整份 `items` 覆盖写」。
+> 地址还带 `isDefault` 唯一性约束，整份覆盖遇上离线合并可能造出两个默认地址；
+> 且下单时要读的是**最新**地址，不是「最终一致」的地址。
+
 App 启动时会把「本地临时车 / 本地临时收藏」**并行**合并进各自云端集合，
 旧版本的本地数据会自动迁移，无需手工处理。
 
