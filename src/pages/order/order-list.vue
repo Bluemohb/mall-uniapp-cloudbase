@@ -5,7 +5,7 @@
   这个页面展示了：
   - 按状态筛选订单（全部/待支付/已支付/已发货/已完成/已取消）
   - 分页加载 + 下拉刷新（和商品列表页 products.vue 同样的套路）
-  - 订单卡片：订单号、状态、商品缩略图、金额、时间
+  - 订单卡片：订单号、状态、商品缩略图、商品名、金额、时间
   - 快捷操作：待支付订单可直接"去支付"或"取消"
   - 点击卡片进入订单详情页
 
@@ -24,7 +24,7 @@
         <input
           v-model="keyword"
           class="search-input"
-          placeholder="搜索订单号 / 商品名 / 收货人"
+          placeholder="搜索商品名 / 订单号 / 收货人"
           placeholder-class="search-placeholder"
           confirm-type="search"
           @input="onSearchInput"
@@ -99,6 +99,12 @@
             />
             <text class="goods-count">共 {{ getTotalQty(order) }} 件</text>
           </view>
+
+          <!--
+            商品名：订单没有「名称」字段，搜索命中的就是这里显示的东西。
+            不显示出来，用户无从知道可以拿商品名搜，只能去搜订单号。
+          -->
+          <view class="goods-name">{{ goodsNameSummary(order) }}</view>
 
           <!-- 底部：时间 + 金额 + 操作 -->
           <view class="card-footer">
@@ -209,13 +215,21 @@ const keyword = ref('')
 const appliedKeyword = ref('')
 
 /**
- * 搜索时的取数上限
+ * 搜索时的取数上限：最多在最近 100 笔订单里找
  *
  * 商品名躺在 items 嵌套数组里，云端既没有可用的模糊匹配条件，也查不了数组元素，
- * 所以搜索只能「先取最近 N 笔 → 再本地过滤」。N = 100 是客户端单次 get 的上限。
+ * 所以搜索只能「先取最近 N 笔 → 再本地过滤」。
  * 代价：更早的订单搜不到，列表底部如实标注了这个范围。
  */
 const searchFetchSize = 100
+
+/**
+ * 搜索时单次 get 的条数
+ *
+ * 小程序端单次 limit 有上限（20），一次要 100 条并不合法，
+ * 所以按 20 条一趟翻页，累计到 searchFetchSize 为止。
+ */
+const SEARCH_PAGE_SIZE = 20
 
 const isSearching = computed(() => appliedKeyword.value.trim() !== '')
 
@@ -343,33 +357,62 @@ async function fetchOrders() {
   }
 }
 
+/** 归一化搜索词：去首尾空格、压缩连续空格（粘贴来的名字常带多余空格） */
+function normalizeKeyword(word: string): string {
+  return (word || '').trim().replace(/\s+/g, ' ')
+}
+
+/** 大小写不敏感、两侧都归一化的包含匹配 */
+function contains(haystack: string | undefined, kw: string): boolean {
+  return normalizeKeyword(haystack || '').toLowerCase().includes(kw)
+}
+
 /**
- * 订单是否命中关键词
+ * 订单是否命中关键词（kw 必须是已归一化并转小写的）
  *
- * 三个维度：订单号、商品名（items 快照的 name）、收货人姓名。
- * 一律小写后做包含匹配：订单号是数字串，用户常只记得后几位。
+ * 三个维度。商品名排第一：用户认一笔订单靠的是「买了什么」，
+ * 而不是那串记不住的订单号。
+ *   1. 商品名（items 快照里的 name）
+ *   2. 订单号（数字串，只记得后几位也能搜到）
+ *   3. 收货人姓名
  */
 function matchKeyword(order: Order, kw: string): boolean {
   if (!kw) return true
-  if ((order.orderNo || '').toLowerCase().includes(kw)) return true
-  if ((order.address?.name || '').toLowerCase().includes(kw)) return true
-  return (order.items || []).some(item => (item.name || '').toLowerCase().includes(kw))
+  if (contains(order.orderNo, kw)) return true
+  if (contains(order.address?.name, kw)) return true
+  return (order.items || []).some(item => contains(item.name, kw))
 }
 
-/** 搜索态取数：拉最近 N 笔 → 本地过滤（分页在此不成立，故 hasMore 置否） */
-async function fetchSearchResult() {
-  const kw = appliedKeyword.value.trim().toLowerCase()
-  hasMore.value = false
+/**
+ * 卡片上展示的商品名摘要
+ *
+ * 订单本身没有「名称」字段，用户在列表里认出订单靠的就是商品名。
+ * 显示出来还有一个作用：让用户知道「原来可以拿商品名搜」。
+ */
+function goodsNameSummary(order: Order): string {
+  const items = order.items || []
+  if (items.length === 0) return '无商品信息'
+  const first = items[0]?.name || '未命名商品'
+  // 多商品订单只补一个种类数，不把一长串名字全铺开
+  return items.length > 1 ? `${first} 等 ${items.length} 种商品` : first
+}
 
-  // ===== Mock 模式：本地订单全在 storage 里，取一批再过滤即可 =====
+/**
+ * 取「供搜索的候选订单」：最近 searchFetchSize 笔
+ *
+ * 【为什么分多趟拉，而不是 limit(100) 一次搞定】
+ * 小程序端单次 get 的 limit 有上限（20），一次要 100 条并不合法，
+ * 所以按 20 条一趟翻页，累计到上限为止。
+ */
+async function fetchCandidatesForSearch(): Promise<Order[]> {
+  // ===== Mock 模式：订单全在本地 storage，一次取够即可 =====
   if (USE_ORDER_MOCK) {
     const result = mockQueryOrders({
       status: activeStatus.value,
       page: 1,
       pageSize: searchFetchSize,
     })
-    orders.value = ((result.data as Order[]) || []).filter(o => matchKeyword(o, kw))
-    return
+    return (result.data as Order[]) || []
   }
 
   let uid = ''
@@ -378,29 +421,50 @@ async function fetchSearchResult() {
   }
   catch (error) {
     console.error('获取用户标识失败:', error)
-    uni.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
-    return
+    throw new Error('登录失败，请稍后重试')
   }
 
-  try {
-    const condition: { userId: string, status?: OrderStatus } = { userId: uid }
-    if (activeStatus.value) {
-      condition.status = activeStatus.value
-    }
+  const condition: { userId: string, status?: OrderStatus } = { userId: uid }
+  if (activeStatus.value) {
+    condition.status = activeStatus.value
+  }
 
+  const all: Order[] = []
+  let skip = 0
+  while (skip < searchFetchSize) {
     const { data } = await app
       .database()
       .collection('orders')
       .where(condition)
       .orderBy('createdAt', 'desc')
-      .limit(searchFetchSize)
+      .skip(skip)
+      .limit(SEARCH_PAGE_SIZE)
       .get()
 
-    orders.value = ((data as Order[]) || []).filter(o => matchKeyword(o, kw))
+    const list = (data as Order[]) || []
+    all.push(...list)
+    // 没拉满一页 = 后面没有了，提前收工
+    if (list.length < SEARCH_PAGE_SIZE) break
+    skip += SEARCH_PAGE_SIZE
+  }
+  return all
+}
+
+/** 搜索态取数：拉最近 N 笔 → 本地过滤（分页在此不成立，故 hasMore 置否） */
+async function fetchSearchResult() {
+  const kw = normalizeKeyword(appliedKeyword.value).toLowerCase()
+  hasMore.value = false
+
+  try {
+    const candidates = await fetchCandidatesForSearch()
+    orders.value = candidates.filter(o => matchKeyword(o, kw))
   }
   catch (error) {
     console.error('搜索订单失败:', error)
-    uni.showToast({ title: '搜索失败', icon: 'none' })
+    uni.showToast({
+      title: error instanceof Error ? error.message : '搜索失败',
+      icon: 'none',
+    })
   }
 }
 
@@ -773,6 +837,18 @@ function formatTime(timestamp: number): string {
   font-size: 24rpx;
   color: #999;
   margin-left: 8rpx;
+}
+
+/* 商品名：既是给用户认订单的，也是搜索命中的目标 */
+.goods-name {
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.4;
+  /* 长商品名单行截断，别把卡片撑破 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ========== 卡片底部 ========== */
