@@ -446,6 +446,7 @@ VITE_PAY_MODE=mock      # 支付走模拟（个人号没有商户号）
 | `vite.config.ts` / `tsconfig.json` | 构建配置只在 dev 进程启动时读一次 | — |
 | `package.json`（增删依赖） | 依赖图变了 | 先 `pnpm install`，再重启 dev 进程 |
 | `src/static/**`（图片、tabBar 图标等） | 小程序端静态资源不走 HMR，靠编译拷贝 | — |
+| 新增 `src/utils/**` 等被页面 `import` 的新模块 | 产物里文件已存在，但开发者工具的模块表还按旧快照构建 | 报 `module 'utils/xxx.js' is not defined`，整页白屏，见下方「新增文件要重开 IDE」 |
 | 新增页面 / 组件文件（首次引入） | HMR 对"新文件 + 新路由"组合经常失手 | 表现是"点进去白屏 / 找不到页面" |
 
 只改现有 `*.vue` / `*.ts` 的内容（样式、逻辑）走 HMR 就行，**不需要**重编译。
@@ -468,6 +469,38 @@ VITE_PAY_MODE=mock      # 支付走模拟（个人号没有商户号）
 > 小程序的本地购物车 / 收藏 / `mock_orders` 也会一起消失。
 > 排查「改完不生效」时优先只清**编译缓存 + 文件缓存**，别随手清数据缓存。
 
+#### 新增文件要重开 IDE，只点「编译」不够
+
+微信开发者工具会缓存一份**文件快照**。dev 进程明明已经把新文件写进了 `dist/dev/mp-weixin`，
+IDE 却仍按旧快照建立模块表，于是页面 `require` 它时直接炸在加载阶段：
+
+```
+Error: module 'utils/order-actions.js' is not defined, require args is '../../utils/order-actions.js'
+Page "pages/order/order-list" has not been registered yet.
+```
+
+别被报错骗了——这里**既不是路径写错，也不是没编译出来**。先直接看产物就能区分：
+
+```powershell
+Get-ChildItem dist\dev\mp-weixin\utils -Filter 'order-actions*'
+```
+
+文件在 → 就是 IDE 的快照没更新，按这个顺序来：
+
+1. 终端 `Ctrl+C` 停掉 dev 进程；
+2. 删掉 `dist\dev` 整个目录（`Remove-Item -Recurse -Force dist\dev`），让产物全量重出；
+3. 微信开发者工具「清缓存」→ **清除编译缓存 + 清除文件缓存**；
+4. **完全退出 IDE 再重开** —— 只点「编译」不会重建快照，这一步是关键；
+5. 重跑 `pnpm dev:mp-weixin`，等产物写完，再用 `Ctrl+B`「重新编译」，别用热重载。
+
+> 「清除数据缓存」和模拟器里的清缓存都**不是**这一档：前者清的是本地 storage
+> （换 uid、清掉购物车），后者清不掉 IDE 的编译快照。这一步别勾。
+
+一个连带现象值得记住：加载失败的模块所引用的**下游模块也不会执行**，
+它们的启动日志会整条消失（本例就是 `💳 [支付] 模式：…` 那行不见了）。
+所以**启动日志少了一行，往往是某个新模块没加载成功的第一个信号**，
+顺着这条链往上找，比盯着报错里的路径名有用。
+
 ### 一分钟自查
 
 出现「源码已改、页面还是老行为」时，按顺序确认：
@@ -475,7 +508,9 @@ VITE_PAY_MODE=mock      # 支付走模拟（个人号没有商户号）
 1. **看启动日志的数据源横幅**（`🧪 [Mock] 商品数据源…` / `☁️ [CloudBase] 商品数据源…`）——先确认走的是哪条路；
 2. **看开发者工具打开的是哪个目录**：`dist/dev/mp-weixin`（dev）还是 `dist/build/mp-weixin`（build）——开关跟着产物走，不跟着源码走；
 3. 停掉 dev 进程重新 `pnpm dev:mp-weixin`，再点一次开发者工具的「编译」；
-4. 仍然不对，再清**编译缓存**（必要时清文件缓存）。
+4. 仍然不对，清**编译缓存 + 文件缓存**；
+5. **涉及新增文件**时（报错 `module '…' is not defined`、页面白屏、某个模块不执行），
+   以上都不够：删 `dist\dev` → **完全退出 IDE 再重开** → 重启 dev → `Ctrl+B` 重新编译。
 
 云函数（`cloudfunctions/**`）不属于这条链路：它不进小程序包，改完要**部署**而不是重新编译，见下一节。
 
