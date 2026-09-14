@@ -99,18 +99,18 @@ import { formatDate } from '@/utils/index'
 import {
   ORDER_STATUS_MAP,
   orderAmountCents,
-  updateOrderStatusViaCloud,
   type Order,
   type OrderStatus,
 } from '@/utils/order'
 import { formatCents } from '@/utils/money'
 
-// 真实微信支付：云函数统一下单 + 唤起收银台 + 主动查单（见 utils/payment.ts）
-import { canUseWechatPay, payOrderWithWechat, type WechatPayResult } from '@/utils/payment'
+// 订单操作统一入口：支付 / 取消。
+// 内部区分「真实微信支付」与「模拟支付」，页面只负责触发与刷新（见 utils/order-actions.ts）
+import { cancelOrderById, payOrderById } from '@/utils/order-actions'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
-import { mockQueryOrders, mockUpdateOrder } from '@/utils/order-mock'
+import { mockQueryOrders } from '@/utils/order-mock'
 
 // ============================================================
 // 状态筛选 tab 定义
@@ -298,122 +298,41 @@ function goShopping() {
 /**
  * 支付（列表页快捷操作）
  *
- * 与详情页 payOrder 保持一致的两条路径：
+ * 与详情页共用 utils/order-actions 里的同一个 payOrderById()：
  *  - 微信小程序端：真实微信支付（云函数下单 → 唤起收银台 → 主动查单确认）
- *  - 其他端：模拟支付，保证模板多端可跑通
+ *  - 个人主体小程序 / H5 / App：模拟支付（详见 README「支付模式开关」）
  *
- * 真实支付的结果以服务端写入为准，所以无论成败都 refresh() 重新拉一次列表，
- * 而不是像模拟支付那样直接改本地这条数据。
+ * 成功后就地更新这条数据（整表 refresh 会丢掉翻页进度与滚动位置）；
+ * 失败则重新拉一次 —— 本地这条很可能已经过期（例如刚被定时任务超时关单）。
  */
 async function payOrder(order: Order) {
   if (!order._id) return
 
-  const amount = formatCents(orderAmountCents(order))
+  const outcome = await payOrderById(order._id, order)
+  if (!outcome.confirmed) return
 
-  if (!USE_ORDER_MOCK && canUseWechatPay()) {
-    const confirmed = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: '微信支付',
-        content: `确认支付 ¥${amount} 吗？`,
-        confirmText: '确认支付',
-        success: res => resolve(!!res.confirm),
-        fail: () => resolve(false),
-      })
-    })
-    if (!confirmed) return
-
-    uni.showLoading({ title: '正在调起支付...', mask: true })
-    let result: WechatPayResult | null = null
-    try {
-      result = await payOrderWithWechat(order._id)
-    }
-    catch (error) {
-      console.error('微信支付流程异常:', error)
-    }
-    finally {
-      // 先关闭 loading 再弹提示：两者共用同一个交互层
-      uni.hideLoading()
-    }
-
-    if (result?.paid) {
-      uni.showToast({ title: '支付成功', icon: 'success' })
-    }
-    else if (result?.cancelled) {
-      uni.showToast({ title: '已取消支付', icon: 'none' })
-    }
-    else {
-      uni.showModal({
-        title: '支付未完成',
-        content: result?.message || '请稍后在订单列表查看支付结果',
-        showCancel: false,
-      })
-    }
-
-    await refresh()
-    return
+  if (outcome.ok) {
+    order.status = 'paid'
+    order.paidAt = Date.now()
   }
-
-  uni.showModal({
-    title: '模拟支付',
-    content: `确认支付 ¥${amount} 吗？`,
-    confirmText: '确认支付',
-    success: async (res) => {
-      if (!res.confirm || !order._id) return
-      try {
-        if (USE_ORDER_MOCK) {
-          mockUpdateOrder(order._id, {
-            status: 'paid',
-            paidAt: Date.now(),
-            updatedAt: Date.now(),
-          })
-        }
-        else {
-          // 云端：走云函数，状态流转与归属由服务端校验
-          await updateOrderStatusViaCloud(order._id, 'paid')
-        }
-        uni.showToast({ title: '支付成功', icon: 'success' })
-        // 本地更新状态，无需重新请求
-        order.status = 'paid'
-      }
-      catch (error) {
-        console.error('支付失败:', error)
-        uni.showToast({ title: error instanceof Error ? error.message : '支付失败', icon: 'none' })
-      }
-    },
-  })
+  else {
+    await refresh()
+  }
 }
 
 /** 取消订单（列表页快捷操作） */
-function cancelOrder(order: Order) {
-  uni.showModal({
-    title: '取消订单',
-    content: '确定要取消该订单吗？',
-    success: async (res) => {
-      if (!res.confirm || !order._id) return
-      try {
-        if (USE_ORDER_MOCK) {
-          mockUpdateOrder(order._id, {
-            status: 'cancelled',
-            updatedAt: Date.now(),
-          })
-        }
-        else {
-          // 云端：走云函数，状态流转与归属由服务端校验
-          await updateOrderStatusViaCloud(order._id, 'cancelled')
-        }
-        uni.showToast({ title: '已取消', icon: 'success' })
-        order.status = 'cancelled'
-      }
-      catch (error) {
-        console.error('取消订单失败:', error)
-        uni.showToast({ title: error instanceof Error ? error.message : '操作失败', icon: 'none' })
-        // 失败通常意味着订单状态已经变了（例如被定时任务 closeExpiredOrders
-        // 超时关单），本地这条数据已过期：重新拉一次列表，
-        // 别让用户对着一个假的「待支付」反复点取消
-        refresh()
-      }
-    },
-  })
+async function cancelOrder(order: Order) {
+  if (!order._id) return
+
+  const outcome = await cancelOrderById(order._id)
+  if (!outcome.confirmed) return
+
+  if (outcome.ok) {
+    order.status = 'cancelled'
+  }
+  else {
+    await refresh()
+  }
 }
 
 // ============================================================

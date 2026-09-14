@@ -24,12 +24,34 @@
  * 【多端说明】
  *   只有微信小程序能调起微信支付。H5 / App 端 canUseWechatPay() 返回 false，
  *   页面会自动退回原有的「模拟支付」，保证模板在多端仍可完整跑通。
+ *
+ * 【个人主体小程序：请在 .env 里声明 VITE_PAY_MODE=mock】
+ *   客户端能探测到的只有「API 在不在」，而 wx.requestPayment / wx.cloud 在任何
+ *   小程序里都存在（跟有没有商户号无关）。个人主体开不了微信支付，商户凭证永远
+ *   配不上，但 canUseWechatPay() 检查的四个条件却全是 true —— 按钮会变成
+ *   「立即支付」，点下去必然失败在「商户凭证未配置」。
+ *   所以「我没有商户号」这件事必须在代码里显式声明，见下面的 PAY_MODE。
  * ============================================================
  */
 import { ENV_ID, isMpWeixin, isValidEnvId } from './cloudbase'
 
 /** 支付云函数名（cloudfunctions/wxpayOrder） */
 const PAY_FUNCTION_NAME = 'wxpayOrder'
+
+/**
+ * 支付模式：'mock' 强制模拟支付；缺省 'auto' 能调起真实支付就调起
+ *
+ * 取值来自 .env.development / .env.production 的 VITE_PAY_MODE。
+ * 必须是「显式声明」的构建期常量：未声明时构建期拿不到值，判断会退化成运行时行为。
+ * 配成 'mock' 后 canUseWechatPay() 会被折叠成常量（实测 mp-weixin 产物里就是
+ * `canUseWechatPay = function () { return !1 }`），页面永远走模拟支付。
+ *
+ * ⚠️ 注意：这只让「判断」变成了常量，**不会**把支付模块从产物里摇掉 ——
+ *    本模块被静态 import 且有顶层副作用（下面的模式日志），所以 wxpayOrder 调用与
+ *    requestPayment 封装仍会留在包里（约 1KB，实测存在）。它们永远不会被触发，
+ *    只是占体积。要彻底去掉得改成动态 import 或条件编译，当前不做。
+ */
+const PAY_MODE = import.meta.env.VITE_PAY_MODE || 'auto'
 
 /** 唤起支付后轮询确认结果的次数与间隔 */
 const CONFIRM_ATTEMPTS = 3
@@ -152,10 +174,18 @@ function ensureWxCloudReady(cloud: WxCloudApi): void {
 /**
  * 当前环境能否使用真实微信支付
  *
- * 三个前提缺一不可：微信小程序端、环境ID已配置、wx.cloud 通道可用。
+ * 四个前提缺一不可：支付模式不是 mock、微信小程序端、环境ID已配置、wx.cloud 通道可用。
  * 任一不满足时页面应退回模拟支付，而不是给用户一个必然失败的按钮。
+ *
+ * ⚠️ 这四个条件只证明「环境具备调起支付的 API」，不能证明「服务端有商户凭证」——
+ *    凭证配置在云端，客户端看不到。所以个人主体小程序必须显式配 VITE_PAY_MODE=mock，
+ *    否则会在支付时收到「商户凭证未配置」（错误文案由 wxpayOrder 云函数翻译）。
  */
 export function canUseWechatPay(): boolean {
+  if (PAY_MODE === 'mock') {
+    // 显式声明「没有商户号」：直接判否，页面自动退回模拟支付
+    return false
+  }
   return isMpWeixin() && Boolean(isValidEnvId) && !!getWxCloud() && !!getWxPayment()
 }
 
@@ -308,4 +338,12 @@ export async function payOrderWithWechat(orderId: string): Promise<WechatPayResu
 
   // ---- 3. 确认结果（以服务端查单为准）----
   return confirmPaid(orderId)
+}
+
+// 提示当前支付模式（启动时打印一次，便于确认按钮会是「立即支付」还是「模拟支付」）
+if (PAY_MODE === 'mock') {
+  console.log('💳 [支付] 模式：模拟支付（VITE_PAY_MODE=mock）—— 不会调起微信收银台')
+}
+else {
+  console.log('💳 [支付] 模式：自动 —— 微信小程序端且商户凭证可用时调起真实微信支付')
 }

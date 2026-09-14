@@ -3,24 +3,27 @@
   📋 订单详情页 - 购物小程序第5步
   ============================================================
   这个页面展示了：
-  - 单条订单的完整信息（状态/地址/商品/金额/时间）
+  - 单条订单的完整信息（状态/地址/商品/金额/支付方式/时间）
   - 按订单状态显示不同的操作按钮，实现状态流转：
-      待支付 → 微信支付 / 取消订单（非微信端自动退回「模拟支付」）
+      待支付 → 微信支付 / 取消订单（个人主体小程序配 VITE_PAY_MODE=mock 后退回「模拟支付」）
       已支付 → 模拟发货 / 确认收货
       已发货 → 确认收货
 
   【状态流转图】
   pending(待支付) ──支付──▶ paid(已支付) ──发货──▶ shipped(已发货) ──收货──▶ completed(已完成)
-        │
-        └──────── 取消 ─────────▶ cancelled(已取消)
+       │
+       └──────── 取消 ─────────▶ cancelled(已取消)
 
   【知识点】
   - doc(id).get() 查询单条数据（和商品详情页一样）
   - doc(id).update(data) 更新指定字段
   - 真实微信支付：云函数统一下单 + wx.requestPayment 唤起收银台 + 主动查单确认，
     全部封装在 src/utils/payment.ts；订单状态最终由服务端回调/查单写入
-  - 模拟支付：真实微信支付需要商户号，用"弹窗确认"代替，
-    并在注释中说明真实接入方式（uni.requestPayment）
+  - 模拟支付：个人主体小程序开不了微信支付（需企业主体 + 认证），
+    在 .env 里配 VITE_PAY_MODE=mock 强制走「弹窗确认」；
+    它同样会写入一条 payment 支付流水（channel='mock'），与真实支付结构同构
+  - 支付/取消/发货/收货统一走 src/utils/order-actions.ts：
+    页面只负责「触发 + 回读」，Mock / 云端与真付 / 模拟的分支都在那一层
   ============================================================
 -->
 <template>
@@ -87,9 +90,17 @@
           <text class="info-label">下单时间</text>
           <text class="info-value">{{ formatTime(order.createdAt) }}</text>
         </view>
+        <view v-if="paymentChannelText" class="info-row">
+          <text class="info-label">支付方式</text>
+          <text class="info-value">{{ paymentChannelText }}</text>
+        </view>
         <view v-if="order.paidAt" class="info-row">
           <text class="info-label">支付时间</text>
           <text class="info-value">{{ formatTime(order.paidAt) }}</text>
+        </view>
+        <view v-if="paymentTransactionId" class="info-row">
+          <text class="info-label">交易号</text>
+          <text class="info-value">{{ paymentTransactionId }}</text>
         </view>
         <view v-if="order.remark" class="info-row">
           <text class="info-label">订单备注</text>
@@ -131,18 +142,26 @@ import { formatDate } from '@/utils/index'
 import {
   ORDER_STATUS_MAP,
   orderAmountCents,
-  updateOrderStatusViaCloud,
+  payChannelLabel,
   type Order,
-  type OrderStatus,
 } from '@/utils/order'
 import { formatCents, formatMoney } from '@/utils/money'
 
-// 真实微信支付：云函数统一下单 + 唤起收银台 + 主动查单（见 utils/payment.ts）
-import { canUseWechatPay, payOrderWithWechat, type WechatPayResult } from '@/utils/payment'
+// 订单操作统一入口：支付 / 取消 / 发货 / 收货。
+// 内部区分「真实微信支付」与「模拟支付」，两个页面重复的那部分分支也收敛在这里，
+// 页面只负责触发与回读（见 utils/order-actions.ts）
+import {
+  canUseWechatPayForOrder,
+  cancelOrderById,
+  completeOrderById,
+  payOrderById,
+  shipOrderById,
+  type OrderActionOutcome,
+} from '@/utils/order-actions'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
-import { mockGetOrderById, mockUpdateOrder } from '@/utils/order-mock'
+import { mockGetOrderById } from '@/utils/order-mock'
 
 /** 订单详情页路由参数 */
 interface OrderDetailQuery {
@@ -162,8 +181,8 @@ const order = ref<Order | null>(null)
 /** 是否正在加载 */
 const loading = ref(true)
 
-/** 是否正在执行操作（防止重复点击） */
-const acting = ref(false)
+// 执行中的防重复点击锁不在这里：详情页与列表页要共用同一把锁，
+// 已统一放进 utils/order-actions.ts 的 acting
 
 // ============================================================
 // 计算属性
@@ -187,12 +206,29 @@ const statusTip = computed(() => {
 })
 
 /**
- * 是否可以用真实微信支付
+ * 是否可以用真实微信支付（决定按钮显示「立即支付」还是「模拟支付」）
  *
- * 三个前提：非 Mock 模式 + 微信小程序端 + wx.cloud 通道可用（见 utils/payment.ts）。
+ * 判断全部收敛在 order-actions 的 canUseWechatPayForOrder()：
+ * 非 Mock 订单 + 微信小程序端 + 支付模式允许（个人主体小程序请配 VITE_PAY_MODE=mock）。
  * 任一不满足就退回「模拟支付」，避免给出一个必然失败的按钮。
  */
-const canPayWithWechat = computed(() => !USE_ORDER_MOCK && canUseWechatPay())
+const canPayWithWechat = computed(() => canUseWechatPayForOrder())
+
+/**
+ * 支付流水（只在支付成功后展示）
+ *
+ * pending 订单也可能带着 payment：真实支付发起下单时就会先记下 outTradeNo 与渠道，
+ * 那时还没付款，此时显示「支付方式」会误导用户。
+ */
+const payment = computed(() => (order.value?.paidAt ? order.value.payment : undefined))
+
+/** 支付方式展示名：微信支付 / 模拟支付 */
+const paymentChannelText = computed(() =>
+  payment.value ? payChannelLabel(payment.value.channel) : '',
+)
+
+/** 交易号：真实支付是微信支付单号，模拟支付是 MOCK 开头的本地编号 */
+const paymentTransactionId = computed(() => payment.value?.transactionId || '')
 
 // ============================================================
 // 页面生命周期
@@ -251,187 +287,53 @@ async function fetchOrderDetail(id: string) {
 // 状态流转操作
 // ============================================================
 
-/**
- * 通用的"更新订单状态"方法
- * 支付/取消/发货/收货都复用它，减少重复代码
- */
-async function updateOrderStatus(status: OrderStatus, extra?: Partial<Order>) {
-  if (acting.value) return
-  acting.value = true
+// 四个操作是同一个套路，页面这边只做两件事：
+//   1. 调 action：确认弹窗 / Mock 与云端分流 / 真付与模拟分流 / 防重复提交
+//      全在 utils/order-actions.ts 里，两个页面共用同一份实现
+//   2. 用户确认过就回读一次订单：成功要展示新状态；失败也可能是订单刚被定时任务
+//      closeExpiredOrders 超时关单，手里这份数据已经过期。不回读的话，
+//      用户会对着一个假的「待支付」反复点按钮、每次都失败。
 
-  try {
-    const updatedAt = Date.now()
-
-    if (USE_ORDER_MOCK) {
-      // ===== Mock 模式（USE_ORDER_MOCK）：更新本地订单 =====
-      const updated = mockUpdateOrder(orderId.value, {
-        status,
-        updatedAt,
-        ...extra,
-      })
-      if (!updated) {
-        throw new Error('订单不存在')
-      }
-      // 本地同步更新，避免重新请求
-      order.value = { ...order.value!, status, updatedAt, ...extra }
-    }
-    else {
-      // ===== 云端模式：走云函数 =====
-      // 服务端会校验「订单归属」与「状态流转合法性」，客户端不能越权改单
-      await updateOrderStatusViaCloud(orderId.value, status)
-      order.value = {
-        ...order.value!,
-        status,
-        updatedAt,
-        ...(status === 'paid' ? { paidAt: updatedAt } : {}),
-      }
-    }
-
-    uni.showToast({ title: '操作成功', icon: 'success' })
-  }
-  catch (error) {
-    console.error('更新订单状态失败:', error)
-    uni.showToast({ title: error instanceof Error ? error.message : '操作失败，请重试', icon: 'none' })
-    // 失败最常见的原因是「订单状态已经被别处改掉了」：例如待支付订单刚被定时任务
-    // closeExpiredOrders 超时关单，或用户在别的入口已经操作过。
-    // 此时本地这份 order 是过期数据，重新拉一次让页面回到真实状态，
-    // 否则用户会对着一个假的「待支付」反复点按钮、每次都失败。
-    if (!USE_ORDER_MOCK && orderId.value) {
-      fetchOrderDetail(orderId.value)
-    }
-  }
-  finally {
-    acting.value = false
+/** 操作结束后回读订单（用户没在弹窗里确认过就不必回读） */
+async function reloadIfConfirmed(outcome: OrderActionOutcome) {
+  if (outcome.confirmed && orderId.value) {
+    await fetchOrderDetail(orderId.value)
   }
 }
 
 /**
- * 支付入口（待支付 → 已支付）
+ * 支付（待支付 → 已支付）
  *
- * 两条路径：
- *  - 可用真实支付（微信小程序端）：云函数统一下单 → uni.requestPayment 唤起收银台
- *    → 主动查单确认，见 utils/payment.ts
- *  - 其他情况（H5 / App / 未配置环境）：保留「模拟支付」，保证模板多端仍可跑通
+ * 走真实微信支付还是模拟支付由 utils/order-actions 决定：
+ *  - canUseWechatPayForOrder() 为真 → 云函数统一下单 + 唤起收银台 + 主动查单确认
+ *  - 否则（个人主体小程序 / H5 / App）→ 模拟支付，状态由服务端或本地 mock 层写入
+ * 页面不再自己改订单状态，一律以回读结果为准。
  */
-function payOrder() {
-  if (canPayWithWechat.value) {
-    confirmWechatPay()
-    return
-  }
-
-  uni.showModal({
-    title: '模拟支付',
-    content: `确认支付 ¥${order.value ? formatCents(orderAmountCents(order.value)) : '0.00'} 吗？\n（当前环境无法调起微信支付，仅演示状态流转）`,
-    confirmText: '确认支付',
-    success: (res) => {
-      if (res.confirm) {
-        updateOrderStatus('paid', { paidAt: Date.now() })
-      }
-    },
-  })
-}
-
-/**
- * 真实微信支付（二次确认 → 调起收银台 → 以服务端查单结果刷新页面）
- *
- * 注意：这里不再直接改订单状态 —— 状态由服务端（支付回调 / 主动查单）写入，
- * 客户端只负责「调起支付」和「展示服务端确认后的结果」。
- */
-async function confirmWechatPay() {
-  if (acting.value) return
-
-  const amount = order.value ? formatCents(orderAmountCents(order.value)) : '0.00'
-  const confirmed = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: '微信支付',
-      content: `确认支付 ¥${amount} 吗？`,
-      confirmText: '确认支付',
-      success: res => resolve(!!res.confirm),
-      fail: () => resolve(false),
-    })
-  })
-  if (!confirmed) return
-
-  acting.value = true
-  uni.showLoading({ title: '正在调起支付...', mask: true })
-
-  let result: WechatPayResult | null = null
-  try {
-    result = await payOrderWithWechat(orderId.value)
-  }
-  catch (error) {
-    // payOrderWithWechat 已把可预期失败转成返回值，这里兜住真正异常的兜底
-    console.error('微信支付流程异常:', error)
-  }
-  finally {
-    // 先关闭 loading 再弹提示：两者共用同一个交互层，顺序反了提示会被吃掉
-    uni.hideLoading()
-    acting.value = false
-  }
-
-  if (!result) {
-    uni.showModal({ title: '支付失败', content: '支付流程出现异常，请稍后重试', showCancel: false })
-  }
-  else if (result.paid) {
-    uni.showToast({ title: '支付成功', icon: 'success' })
-  }
-  else if (result.cancelled) {
-    uni.showToast({ title: '已取消支付', icon: 'none' })
-  }
-  else {
-    // 没拿到成功也不等于失败：钱可能已付、状态还没同步完，如实提示即可
-    uni.showModal({
-      title: '支付未完成',
-      content: result.message || '请稍后在订单列表查看支付结果',
-      showCancel: false,
-    })
-  }
-
-  // 无论结果如何都回读一次：成功要展示服务端写入的新状态，
-  // 失败也可能是「订单刚被超时关单」，都需要让页面回到真实状态
-  await fetchOrderDetail(orderId.value)
+async function payOrder() {
+  if (!order.value || !orderId.value) return
+  const outcome = await payOrderById(orderId.value, order.value)
+  await reloadIfConfirmed(outcome)
 }
 
 /** 取消订单（待支付 → 已取消） */
-function cancelOrder() {
-  uni.showModal({
-    title: '取消订单',
-    content: '确定要取消该订单吗？',
-    success: (res) => {
-      if (res.confirm) {
-        updateOrderStatus('cancelled')
-      }
-    },
-  })
+async function cancelOrder() {
+  if (!orderId.value) return
+  await reloadIfConfirmed(await cancelOrderById(orderId.value))
 }
 
 /**
  * 模拟发货（已支付 → 已发货）
  * 真实项目中"发货"是商家后台的操作，这里提供按钮便于演示完整状态流转
  */
-function shipOrder() {
-  uni.showModal({
-    title: '模拟发货',
-    content: '确认已发货？（真实场景由商家后台操作）',
-    success: (res) => {
-      if (res.confirm) {
-        updateOrderStatus('shipped')
-      }
-    },
-  })
+async function shipOrder() {
+  if (!orderId.value) return
+  await reloadIfConfirmed(await shipOrderById(orderId.value))
 }
 
 /** 确认收货（已支付/已发货 → 已完成） */
-function completeOrder() {
-  uni.showModal({
-    title: '确认收货',
-    content: '确认已收到商品吗？',
-    success: (res) => {
-      if (res.confirm) {
-        updateOrderStatus('completed')
-      }
-    },
-  })
+async function completeOrder() {
+  if (!orderId.value) return
+  await reloadIfConfirmed(await completeOrderById(orderId.value))
 }
 
 // ============================================================

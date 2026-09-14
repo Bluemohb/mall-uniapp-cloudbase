@@ -40,4 +40,10 @@ interface ImportMetaEnv {
    * 用途：开发环境也能直连云端 orders 集合，用真实数据调试订单链路。
    */
   readonly VITE_ORDER_MOCK?: string
+  /**
+   * 支付模式：'mock' = 强制模拟支付（个人主体小程序 / 无商户凭证必配）；
+   * 不配置时为 'auto'，环境具备条件就调起真实微信支付。
+   * 见 README「支付模式开关」与 src/utils/payment.ts 的 canUseWechatPay()。
+   */
+  readonly VITE_PAY_MODE?: string
 }

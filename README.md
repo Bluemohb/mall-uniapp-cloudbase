@@ -344,6 +344,7 @@ VITE_USE_MOCK=false
 ```
 🧪 [Mock] 商品数据源：本地 mock/products_02.json（10 条）
 ☁️ [CloudBase] 订单数据源：云数据库 orders 集合
+💳 [支付] 模式：模拟支付（VITE_PAY_MODE=mock）—— 不会调起微信收银台
 ```
 
 两个开关在构建期都会被静态替换成字面量并常量折叠，`if (USE_MOCK)` 在编译期就有确定结果。
@@ -369,6 +370,65 @@ VITE_USE_MOCK=false
 `.env.development` 里的 `VITE_USE_MOCK=true` 只对 **dev 产物**生效。只要开发者工具打开的是
 `dist/build/mp-weixin`，商品列表 / 详情 / 首页推荐 / 搜索就全部走云端，与 Mock 开关的取值无关。
 改完 `.env` 必须**重新构建**，产物里的开关值才会跟着变。
+
+## 支付模式开关（个人主体小程序必读）
+
+个人主体小程序**开不了微信支付**（需要企业主体 + 300 元认证），商户凭证永远配不上。
+但客户端能探测到的只有「API 在不在」—— `wx.requestPayment` 与 `wx.cloud` 在任何
+小程序里都存在（跟有没有商户号无关），所以这些条件在个人号里全是 `true`：
+
+```ts
+// src/utils/payment.ts 里 canUseWechatPay() 的四个条件
+isMpWeixin() && isValidEnvId && wx.cloud && wx.requestPayment
+```
+
+于是 `VITE_ORDER_MOCK=false`（订单走云端）时按钮会显示「**立即支付**」，点下去必然
+失败在「商户凭证未配置」（错误文案由 `wxpayOrder` 云函数翻译）。所以「我没有商户号」
+这件事必须在代码里显式声明 —— 这就是 `VITE_PAY_MODE`：
+
+| 取值 | `canUseWechatPay()` | 页面行为 | 适用 |
+| --- | --- | --- | --- |
+| `'mock'` | 恒为 false | 一律走模拟支付 | 个人主体小程序、无商户凭证 |
+| 缺省 / `'auto'` | 按环境判断 | 环境具备就调起真实微信支付 | 已有商户号并配好凭证 |
+
+```bash
+# .env.development 与 .env.production 都要写（改完必须重新构建）
+VITE_ORDER_MOCK=false   # 订单走云端（推荐：订单链路是真实的，只有支付是模拟的）
+VITE_PAY_MODE=mock      # 支付走模拟（个人号没有商户号）
+```
+
+> 将来办好企业号、配好商户凭证，把这两处改成 `auto` 即可，**业务代码一行都不用动**。
+
+### 三个开关的组合
+
+| `VITE_ORDER_MOCK` | `VITE_PAY_MODE` | 订单存储 | 支付方式 | 说明 |
+| --- | --- | --- | --- | --- |
+| `true` | `mock` | 本地 storage | 模拟 | 纯离线演示，不依赖云端 |
+| `false` | `mock` | 云端 `orders` 集合 | 模拟 | **本项目默认**：订单链路真实，只有支付是模拟的 |
+| `false` | 缺省 | 云端 `orders` 集合 | 真实微信支付 | 需企业主体 + 商户凭证 |
+
+> ⚠️ 「订单走云端 + 真实微信支付」这一格在个人号里是**无解**的（点了必然失败），
+> 所以 `.env.development` / `.env.production` 都预设了 `VITE_PAY_MODE=mock`。
+
+### 模拟支付也会写一条支付流水
+
+模拟支付不是「只把状态改成已支付」：它会像真实支付一样写入 `order.payment`
+（`channel: 'mock'`，含 `outTradeNo` / `transactionId` / `paidCents` / `confirmedAt`），
+结构与云函数 `wxpayOrder` 的 `markOrderPaid` **刻意保持同构**（只有 `channel` 与
+`confirmedBy` 不同）。好处是订单详情页用同一段模板就能展示「微信支付」与「模拟支付」
+两种订单，将来换成真实支付，页面不用改。
+
+| 订单存储 | 谁写入 `payment` |
+| --- | --- |
+| 云端 `orders` | 云函数 `updateOrderStatus`（⚠️ 改过它需要**重新部署该云函数**才生效） |
+| 本地 storage | `src/utils/order-actions.ts` 构造后经 `order-mock` 落本地 |
+
+### 支付与订单操作统一入口
+
+`src/utils/order-actions.ts` 是「支付 / 取消 / 发货 / 收货」的唯一入口，订单详情页与
+订单列表页都调它，页面只负责「触发 + 回读订单」。原先这 4 个操作在两个页面里各写了
+一遍（每个还要再分 Mock / 云端两条路），同一分支最多存在 4 份拷贝，行为已经出现漂移
+（例如列表页支付成功后不写 `paidAt`），现在收敛在一处。
 
 ## ⚠️ 改完什么必须「重新编译 + 清缓存」
 

@@ -20,6 +20,14 @@
  *   completed → （终态）
  *   cancelled → （终态）
  *
+ * 【pending → paid 只服务「模拟支付」】
+ *   真实微信支付走 wxpayOrder 云函数（由它按服务端金额下单，再靠支付回调 /
+ *   主动查单标记支付），不会调用本函数。落到本函数的 paid 都是模拟支付
+ *   （个人主体小程序 / H5 / App，见 README「支付模式开关」），
+ *   所以这里会补一条 channel='mock' 的 payment 支付流水：
+ *   字段结构与 wxpayOrder 的 markOrderPaid 刻意保持同构，
+ *   订单详情页因此可以用同一段模板展示「微信支付」与「模拟支付」两种订单。
+ *
  * 【取消订单会回补库存 + 回退销量】
  *   createOrder 在"下单"时就扣了库存，所以 pending → cancelled 必须还回去，
  *   规则与扣减严格互逆（见 restoreItem 注释）。paid → cancelled（退款）
@@ -74,6 +82,15 @@ function readUpdated(res) {
     throw new TypeError('未获取到更新影响行数（updated 字段缺失），请检查 @cloudbase/node-sdk 版本')
   }
   return n
+}
+
+/**
+ * 「元」→「分」：先取整再相乘，避免浮点误差（与 createOrder / wxpayOrder 的同名函数一致）
+ * 用于把订单金额写进支付流水：新订单有 totalPriceCents，历史订单只有 totalPrice（元）
+ */
+function toCents(yuan) {
+  const n = Number(yuan)
+  return Number.isFinite(n) ? Math.round(n * 100) : 0
 }
 
 /**
@@ -193,8 +210,20 @@ exports.main = async (event) => {
 
   const now = Date.now()
   const patch = { status, updatedAt: now }
-  if (status === 'paid')
+  if (status === 'paid') {
     patch.paidAt = now
+    // 模拟支付的支付流水（结构与 wxpayOrder 的 markOrderPaid 同构，只有渠道与确认方不同）
+    // out_trade_no 复用业务订单号：真实支付也是这么做的（见 wxpayOrder.buildOutTradeNo），
+    // 将来真要接微信支付时，这个字段不用改口径
+    patch.payment = {
+      outTradeNo: String(order.orderNo || orderId),
+      channel: 'mock',
+      transactionId: `MOCK${now}`,
+      paidCents: toCents(order.totalPriceCents ?? order.totalPrice),
+      confirmedBy: 'updateOrderStatus',
+      confirmedAt: now,
+    }
+  }
 
   // ---- 条件更新：把「刚校验过的旧状态」也写进 where ----
   // 【为什么不用 doc(orderId).update()？】

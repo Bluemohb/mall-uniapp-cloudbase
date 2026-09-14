@@ -40,6 +40,50 @@ export const ORDER_STATUS_MAP: Record<OrderStatus, { label: string, color: strin
 }
 
 /**
+ * 支付渠道
+ *   wxpay：真实微信支付（由云函数 wxpayOrder / wxpayOrderCallback 写入）
+ *   mock ：模拟支付（个人主体小程序 / H5 / App；由 updateOrderStatus 云函数
+ *          或本地 mock 层写入），见 src/utils/order-actions.ts
+ */
+export type OrderPayChannel = 'wxpay' | 'mock'
+
+/** 支付渠道展示名 */
+export const ORDER_PAY_CHANNEL_MAP: Record<OrderPayChannel, string> = {
+  wxpay: '微信支付',
+  mock: '模拟支付',
+}
+
+/** 取支付渠道展示名（历史订单没有该字段时统一显示「未支付」） */
+export function payChannelLabel(channel?: string): string {
+  return ORDER_PAY_CHANNEL_MAP[channel as OrderPayChannel] || '未支付'
+}
+
+/**
+ * 支付流水（order.payment）
+ *
+ * 两条支付路径写入的结构刻意保持同构，只有 channel 与 confirmedBy 不同，
+ * 这样订单详情页可以用同一段模板展示「真付」与「模拟」两种订单，不必分叉渲染。
+ */
+export interface OrderPayment {
+  /** 商户订单号：真实支付下单时由服务端决定，模拟支付复用业务订单号 */
+  outTradeNo?: string
+  /** 支付渠道 */
+  channel?: OrderPayChannel
+  /** 微信支付单号；模拟支付是一个 MOCK 开头的本地编号 */
+  transactionId?: string
+  /** 预支付创建时间（真实支付发起下单时写入，此时尚未付款） */
+  prepayAt?: number
+  /** 实付金额（分） */
+  paidCents?: number
+  /** 微信侧支付完成时间（模拟支付不写） */
+  successTime?: string
+  /** 谁把订单标记为已支付：query / callback / updateOrderStatus / mock-pay */
+  confirmedBy?: string
+  /** 标记时间 */
+  confirmedAt?: number
+}
+
+/**
  * 订单中的单个商品
  *
  * 【为什么叫"快照"？】
@@ -91,6 +135,7 @@ export interface Order {
   createdAt: number     // 下单时间（时间戳）
   updatedAt: number     // 最近更新时间（时间戳）
   paidAt?: number       // 支付时间（时间戳，支付后写入）
+  payment?: OrderPayment // 支付流水（支付成功后写入，见 OrderPayment 注释）
 }
 
 /**
