@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * 🛒 订单操作统一入口（支付 / 取消 / 发货 / 收货）
+ * 🛒 订单操作统一入口（支付 / 取消 / 发货 / 收货 / 批量取消）
  * ============================================================
  * 【为什么要有这一层】
  *   原先「支付」「取消」在订单详情页与订单列表页各写了一遍，每个操作还要再分
@@ -98,6 +98,7 @@ async function changeStatus(
   orderId: string,
   status: OrderStatus,
   localPatch?: Partial<Order>,
+  options: { silent?: boolean } = {},
 ): Promise<boolean> {
   try {
     if (USE_ORDER_MOCK) {
@@ -116,10 +117,14 @@ async function changeStatus(
   }
   catch (error) {
     console.error(`更新订单状态失败（→ ${status}）:`, error)
-    uni.showToast({
-      title: error instanceof Error ? error.message : '操作失败，请重试',
-      icon: 'none',
-    })
+    // silent：批量操作由调用方汇总后再提示一次。逐单弹 toast 会连弹 N 个，
+    // 后面的还会把前面的覆盖掉，用户只看得见最后一个。
+    if (!options.silent) {
+      uni.showToast({
+        title: error instanceof Error ? error.message : '操作失败，请重试',
+        icon: 'none',
+      })
+    }
     return false
   }
 }
@@ -192,10 +197,19 @@ async function payWithMock(orderId: string, order: PayableOrder): Promise<boolea
   return ok
 }
 
-/** 同一时刻只允许一个订单操作在飞（见 acting 注释） */
-async function runExclusive(task: () => Promise<OrderActionOutcome>): Promise<OrderActionOutcome> {
+/**
+ * 同一时刻只允许一个订单操作在飞（见 acting 注释）
+ *
+ * 【为什么要泛型】
+ *   单笔操作返回 OrderActionOutcome（ok）、批量返回 BatchCancelOutcome（succeeded/failed），
+ *   两者的"没有执行"形态字段也不同，无法在这里统一构造，所以由调用方通过 onBusy 给出。
+ */
+async function runExclusive<T extends { confirmed: boolean }>(
+  task: () => Promise<T>,
+  onBusy: () => T,
+): Promise<T> {
   if (acting) {
-    return { confirmed: false, ok: false }
+    return onBusy()
   }
   acting = true
   try {
@@ -237,7 +251,7 @@ export function payOrderById(orderId: string, order: PayableOrder): Promise<Orde
       ? await payWithWechat(orderId)
       : await payWithMock(orderId, order)
     return { confirmed: true, ok }
-  })
+  }, () => ({ confirmed: false, ok: false }))
 }
 
 /** 取消订单（待支付 → 已取消）；服务端会按订单快照回补库存与销量 */
@@ -253,7 +267,7 @@ export function cancelOrderById(orderId: string): Promise<OrderActionOutcome> {
       uni.showToast({ title: '已取消', icon: 'success' })
     }
     return { confirmed: true, ok }
-  })
+  }, () => ({ confirmed: false, ok: false }))
 }
 
 /** 模拟发货（已支付 → 已发货）；真实项目里这是商家后台的操作 */
@@ -269,7 +283,7 @@ export function shipOrderById(orderId: string): Promise<OrderActionOutcome> {
       uni.showToast({ title: '操作成功', icon: 'success' })
     }
     return { confirmed: true, ok }
-  })
+  }, () => ({ confirmed: false, ok: false }))
 }
 
 /** 确认收货（已支付 / 已发货 → 已完成） */
@@ -285,5 +299,73 @@ export function completeOrderById(orderId: string): Promise<OrderActionOutcome> 
       uni.showToast({ title: '操作成功', icon: 'success' })
     }
     return { confirmed: true, ok }
-  })
+  }, () => ({ confirmed: false, ok: false }))
+}
+
+/**
+ * 批量操作的结果
+ *   confirmed：用户是否在确认弹窗里点了「确定」
+ *   succeeded / failed：逐单执行后的成功 / 失败笔数
+ */
+export interface BatchCancelOutcome {
+  confirmed: boolean
+  succeeded: number
+  failed: number
+}
+
+/**
+ * 批量取消订单
+ *
+ * 只负责「执行 + 计数」；哪些订单能选（只有 pending 可取消）由页面判断，
+ * 结果提示也交给页面统一汇总。
+ *
+ * 【为什么整批只确认一次】
+ *   选 20 单点一次，结果弹 20 个确认框，是最劝退的交互。
+ *
+ * 【为什么串行而不是 Promise.all】
+ *   每单都要过云函数的状态机、取消时还要回补库存；并发既容易撞限流，
+ *   也会让「回补失败」的日志互相穿插、事后无法按订单定位。
+ *   批量订单数有限（用户手工勾选），串行完全够快。
+ *
+ * 【为什么单笔失败不中断】
+ *   最常见的失败原因是「这笔已经被别处改过状态了」——定时任务超时关单、
+ *   或在详情页/另一个入口点过取消。这与其余订单无关，中断只会让用户白选一遍，
+ *   所以继续跑完，最后如实汇报成功/失败笔数。
+ *
+ * 【失败笔数不为 0 时页面该怎么做】
+ *   本地这批数据已经过期（别人先改了），直接全量刷新一次即可，
+ *   不要逐笔重试——重试多半还是同样的结果。
+ */
+export function cancelOrdersByIds(ids: string[]): Promise<BatchCancelOutcome> {
+  return runExclusive(
+    async () => {
+      const targets = (ids || []).filter(id => !!id)
+      if (targets.length === 0) {
+        return { confirmed: false, succeeded: 0, failed: 0 }
+      }
+
+      const confirmed = await showConfirm(
+        '批量取消订单',
+        `确定取消选中的 ${targets.length} 笔订单吗？取消后不可恢复`,
+        '确定取消',
+      )
+      if (!confirmed) {
+        return { confirmed: false, succeeded: 0, failed: 0 }
+      }
+
+      let succeeded = 0
+      let failed = 0
+      for (const id of targets) {
+        const ok = await changeStatus(id, 'cancelled', undefined, { silent: true })
+        if (ok) {
+          succeeded++
+        }
+        else {
+          failed++
+        }
+      }
+      return { confirmed: true, succeeded, failed }
+    },
+    () => ({ confirmed: false, succeeded: 0, failed: 0 }),
+  )
 }

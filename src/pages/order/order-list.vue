@@ -17,6 +17,26 @@
 -->
 <template>
   <view class="order-list-page">
+    <!-- ========== 搜索 + 批量管理入口 ========== -->
+    <view class="toolbar">
+      <view class="search-box">
+        <text class="search-icon">🔍</text>
+        <input
+          v-model="keyword"
+          class="search-input"
+          placeholder="搜索订单号 / 商品名 / 收货人"
+          placeholder-class="search-placeholder"
+          confirm-type="search"
+          @input="onSearchInput"
+          @confirm="submitSearch"
+        />
+        <text v-if="keyword" class="search-clear" @click="clearSearch">✕</text>
+      </view>
+      <text class="manage-btn" :class="{ active: selectMode }" @click="toggleManage">
+        {{ selectMode ? '完成' : '批量' }}
+      </text>
+    </view>
+
     <!-- ========== 状态筛选栏 ========== -->
     <scroll-view class="tab-bar" scroll-x :show-scrollbar="false">
       <view class="tab-list">
@@ -37,8 +57,9 @@
       <!-- 空状态 -->
       <view v-if="!loading && orders.length === 0" class="empty-state">
         <view class="empty-icon">🧾</view>
-        <text class="empty-text">暂无相关订单</text>
-        <view class="empty-btn" @click="goShopping">去逛逛</view>
+        <text class="empty-text">{{ isSearching ? '没有找到匹配的订单' : '暂无相关订单' }}</text>
+        <view v-if="isSearching" class="empty-btn" @click="clearSearch">清空搜索</view>
+        <view v-else class="empty-btn" @click="goShopping">去逛逛</view>
       </view>
 
       <!-- 订单卡片 -->
@@ -46,53 +67,85 @@
         v-for="order in orders"
         :key="order._id"
         class="order-card"
-        @click="goDetail(order._id)"
+        @click="onCardTap(order)"
       >
-        <!-- 头部：订单号 + 状态 -->
-        <view class="card-header">
-          <text class="order-no">订单号：{{ order.orderNo }}</text>
-          <text class="order-status" :style="{ color: getStatusInfo(order.status).color }">
-            {{ getStatusInfo(order.status).label }}
-          </text>
+        <!-- 多选模式的复选框：只有待支付订单可取消，其余状态置灰不可选 -->
+        <view v-if="selectMode" class="card-check" @click.stop="toggleSelect(order)">
+          <view
+            class="checkbox"
+            :class="{ checked: isSelected(order._id), disabled: !canSelect(order) }"
+          >
+            <text v-if="isSelected(order._id)" class="check-mark">✓</text>
+          </view>
         </view>
 
-        <!-- 商品缩略图 -->
-        <view class="goods-row">
-          <image
-            v-for="(item, idx) in order.items.slice(0, 4)"
-            :key="idx"
-            :src="item.image || '/static/logo.png'"
-            class="thumb"
-            mode="aspectFill"
-          />
-          <text class="goods-count">共 {{ getTotalQty(order) }} 件</text>
-        </view>
+        <view class="card-body">
+          <!-- 头部：订单号 + 状态 -->
+          <view class="card-header">
+            <text class="order-no">订单号：{{ order.orderNo }}</text>
+            <text class="order-status" :style="{ color: getStatusInfo(order.status).color }">
+              {{ getStatusInfo(order.status).label }}
+            </text>
+          </view>
 
-        <!-- 底部：时间 + 金额 + 操作 -->
-        <view class="card-footer">
-          <text class="order-time">{{ formatTime(order.createdAt) }}</text>
-          <view class="footer-right">
-            <text class="total-price">¥{{ formatCents(orderAmountCents(order)) }}</text>
-            <!-- 待支付订单的快捷操作 -->
-            <template v-if="order.status === 'pending'">
-              <view class="mini-btn ghost" @click.stop="cancelOrder(order)">取消</view>
-              <view class="mini-btn primary" @click.stop="payOrder(order)">去支付</view>
-            </template>
+          <!-- 商品缩略图 -->
+          <view class="goods-row">
+            <image
+              v-for="(item, idx) in order.items.slice(0, 4)"
+              :key="idx"
+              :src="item.image || '/static/logo.png'"
+              class="thumb"
+              mode="aspectFill"
+            />
+            <text class="goods-count">共 {{ getTotalQty(order) }} 件</text>
+          </view>
+
+          <!-- 底部：时间 + 金额 + 操作 -->
+          <view class="card-footer">
+            <text class="order-time">{{ formatTime(order.createdAt) }}</text>
+            <view class="footer-right">
+              <text class="total-price">¥{{ formatCents(orderAmountCents(order)) }}</text>
+              <!-- 待支付订单的快捷操作：多选模式下隐藏，统一由底部操作条处理 -->
+              <template v-if="order.status === 'pending' && !selectMode">
+                <view class="mini-btn ghost" @click.stop="cancelOrder(order)">取消</view>
+                <view class="mini-btn primary" @click.stop="payOrder(order)">去支付</view>
+              </template>
+            </view>
           </view>
         </view>
       </view>
 
       <!-- 加载更多状态 -->
       <view v-if="orders.length > 0" class="load-more">
-        <text>{{ hasMore ? (loading ? '加载中...' : '上拉加载更多') : '没有更多了' }}</text>
+        <!-- 搜索是「先取最近 N 笔再本地过滤」，如实标注范围，免得以为漏了订单 -->
+        <text v-if="isSearching">仅在最近 {{ searchFetchSize }} 笔订单中匹配</text>
+        <text v-else>{{ hasMore ? (loading ? '加载中...' : '上拉加载更多') : '没有更多了' }}</text>
       </view>
-      <view class="bottom-placeholder" />
+      <view class="bottom-placeholder" :class="{ 'with-batch-bar': selectMode }" />
     </scroll-view>
+
+    <!-- ========== 批量操作条（仅多选模式） ========== -->
+    <view v-if="selectMode" class="batch-bar">
+      <view class="batch-left" @click="toggleSelectAll">
+        <view class="checkbox" :class="{ checked: allSelected, disabled: selectableCount === 0 }">
+          <text v-if="allSelected" class="check-mark">✓</text>
+        </view>
+        <text class="batch-all">全选</text>
+      </view>
+      <view class="batch-right">
+        <text class="batch-count">
+          已选 {{ selectedIds.length }} 笔 · ¥{{ formatCents(selectedAmountCents) }}
+        </text>
+        <view class="batch-btn" :class="{ disabled: selectedIds.length === 0 }" @click="batchCancel">
+          批量取消
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import { app, getUid } from '@/utils/cloudbase'
 import { formatDate } from '@/utils/index'
@@ -106,7 +159,7 @@ import { formatCents } from '@/utils/money'
 
 // 订单操作统一入口：支付 / 取消。
 // 内部区分「真实微信支付」与「模拟支付」，页面只负责触发与刷新（见 utils/order-actions.ts）
-import { cancelOrderById, payOrderById } from '@/utils/order-actions'
+import { cancelOrderById, cancelOrdersByIds, payOrderById } from '@/utils/order-actions'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
@@ -145,6 +198,33 @@ const loading = ref(true)
 const page = ref(0)
 const pageSize = 10
 const hasMore = ref(true)
+
+// ============================================================
+// 搜索
+// ============================================================
+
+/** 输入框里的原始值（v-model 绑定，每敲一个字都变） */
+const keyword = ref('')
+/** 防抖后真正参与过滤的关键词；为空 = 不在搜索态 */
+const appliedKeyword = ref('')
+
+/**
+ * 搜索时的取数上限
+ *
+ * 商品名躺在 items 嵌套数组里，云端既没有可用的模糊匹配条件，也查不了数组元素，
+ * 所以搜索只能「先取最近 N 笔 → 再本地过滤」。N = 100 是客户端单次 get 的上限。
+ * 代价：更早的订单搜不到，列表底部如实标注了这个范围。
+ */
+const searchFetchSize = 100
+
+const isSearching = computed(() => appliedKeyword.value.trim() !== '')
+
+// ============================================================
+// 多选（批量取消）
+// ============================================================
+
+const selectMode = ref(false)
+const selectedIds = ref<string[]>([])
 
 // ============================================================
 // 页面生命周期
@@ -190,6 +270,13 @@ onReachBottom(() => {
  * 第二页：skip(10).limit(10)
  */
 async function fetchOrders() {
+  // 搜索态：一次取一批到本地过滤，不走分页
+  // （分页会让"排在后面才匹配"的订单永远漏掉，语义上就不成立）
+  if (isSearching.value) {
+    await fetchSearchResult()
+    return
+  }
+
   // ===== Mock 模式（USE_ORDER_MOCK）：读本地订单，无需登录态 =====
   if (USE_ORDER_MOCK) {
     const result = mockQueryOrders({
@@ -256,6 +343,67 @@ async function fetchOrders() {
   }
 }
 
+/**
+ * 订单是否命中关键词
+ *
+ * 三个维度：订单号、商品名（items 快照的 name）、收货人姓名。
+ * 一律小写后做包含匹配：订单号是数字串，用户常只记得后几位。
+ */
+function matchKeyword(order: Order, kw: string): boolean {
+  if (!kw) return true
+  if ((order.orderNo || '').toLowerCase().includes(kw)) return true
+  if ((order.address?.name || '').toLowerCase().includes(kw)) return true
+  return (order.items || []).some(item => (item.name || '').toLowerCase().includes(kw))
+}
+
+/** 搜索态取数：拉最近 N 笔 → 本地过滤（分页在此不成立，故 hasMore 置否） */
+async function fetchSearchResult() {
+  const kw = appliedKeyword.value.trim().toLowerCase()
+  hasMore.value = false
+
+  // ===== Mock 模式：本地订单全在 storage 里，取一批再过滤即可 =====
+  if (USE_ORDER_MOCK) {
+    const result = mockQueryOrders({
+      status: activeStatus.value,
+      page: 1,
+      pageSize: searchFetchSize,
+    })
+    orders.value = ((result.data as Order[]) || []).filter(o => matchKeyword(o, kw))
+    return
+  }
+
+  let uid = ''
+  try {
+    uid = await getUid()
+  }
+  catch (error) {
+    console.error('获取用户标识失败:', error)
+    uni.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+    return
+  }
+
+  try {
+    const condition: { userId: string, status?: OrderStatus } = { userId: uid }
+    if (activeStatus.value) {
+      condition.status = activeStatus.value
+    }
+
+    const { data } = await app
+      .database()
+      .collection('orders')
+      .where(condition)
+      .orderBy('createdAt', 'desc')
+      .limit(searchFetchSize)
+      .get()
+
+    orders.value = ((data as Order[]) || []).filter(o => matchKeyword(o, kw))
+  }
+  catch (error) {
+    console.error('搜索订单失败:', error)
+    uni.showToast({ title: '搜索失败', icon: 'none' })
+  }
+}
+
 /** 刷新（重置到第一页） */
 async function refresh() {
   page.value = 0
@@ -293,6 +441,140 @@ function goDetail(id?: string) {
 /** 去逛逛（tabBar 页用 switchTab） */
 function goShopping() {
   uni.switchTab({ url: '/pages/products/products' })
+}
+
+// ============================================================
+// 搜索
+// ============================================================
+
+/** 输入防抖：避免每敲一个字就查一次库 */
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+function onSearchInput() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    appliedKeyword.value = keyword.value
+    refresh()
+  }, 300)
+}
+
+/** 回车 / 点软键盘的搜索键：跳过防抖立即查 */
+function submitSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  appliedKeyword.value = keyword.value
+  refresh()
+}
+
+/** 清空搜索；已经在非搜索态时不必重复查库 */
+function clearSearch() {
+  keyword.value = ''
+  if (searchTimer) clearTimeout(searchTimer)
+  if (appliedKeyword.value === '') return
+  appliedKeyword.value = ''
+  refresh()
+}
+
+// ============================================================
+// 多选批量取消
+// ============================================================
+
+/** 只有待支付订单能取消：其余状态一律不可选（置灰，也不计入全选） */
+function canSelect(order: Order): boolean {
+  return order.status === 'pending'
+}
+
+function isSelected(id?: string): boolean {
+  return !!id && selectedIds.value.includes(id)
+}
+
+/** 当前列表里可被选中的订单，供「全选」使用 */
+const selectableOrders = computed(() => orders.value.filter(canSelect))
+const selectableCount = computed(() => selectableOrders.value.length)
+const allSelected = computed(
+  () => selectableCount.value > 0 && selectableOrders.value.every(o => isSelected(o._id)),
+)
+
+/** 已选订单的合计金额（分） */
+const selectedAmountCents = computed(() =>
+  orders.value
+    .filter(o => isSelected(o._id))
+    .reduce((sum, o) => sum + orderAmountCents(o), 0),
+)
+
+/** 进入 / 退出多选模式；退出时清空选择，免得残留 id 影响下一次 */
+function toggleManage() {
+  selectMode.value = !selectMode.value
+  selectedIds.value = []
+}
+
+function toggleSelect(order: Order) {
+  if (!order._id) return
+  if (!canSelect(order)) {
+    uni.showToast({ title: '只有待支付订单可以取消', icon: 'none' })
+    return
+  }
+  const index = selectedIds.value.indexOf(order._id)
+  if (index >= 0) {
+    selectedIds.value.splice(index, 1)
+  }
+  else {
+    selectedIds.value.push(order._id)
+  }
+}
+
+function toggleSelectAll() {
+  if (selectableCount.value === 0) return
+  if (allSelected.value) {
+    const ids = new Set(selectableOrders.value.map(o => o._id))
+    selectedIds.value = selectedIds.value.filter(id => !ids.has(id))
+  }
+  else {
+    const ids = new Set(selectedIds.value)
+    selectableOrders.value.forEach((o) => {
+      if (o._id) ids.add(o._id)
+    })
+    selectedIds.value = [...ids]
+  }
+}
+
+/** 卡片点击：多选模式下代表"勾选"，普通模式才进详情 */
+function onCardTap(order: Order) {
+  if (selectMode.value) {
+    toggleSelect(order)
+    return
+  }
+  goDetail(order._id)
+}
+
+/**
+ * 批量取消
+ *
+ * 执行与计数都在 utils/order-actions 的 cancelOrdersByIds 里（那里统一走
+ * 状态机、防重复提交、Mock/云端分流），这里只负责提示与收尾。
+ * 有失败笔数说明本地这批数据已经过期（多半被超时关单抢先了），全量刷新即可。
+ */
+async function batchCancel() {
+  if (selectedIds.value.length === 0) {
+    uni.showToast({ title: '请先选择订单', icon: 'none' })
+    return
+  }
+
+  const outcome = await cancelOrdersByIds(selectedIds.value)
+  if (!outcome.confirmed) return
+
+  if (outcome.failed === 0) {
+    uni.showToast({ title: `已取消 ${outcome.succeeded} 笔`, icon: 'success' })
+  }
+  else {
+    uni.showToast({
+      title: `成功 ${outcome.succeeded} 笔，失败 ${outcome.failed} 笔`,
+      icon: 'none',
+      duration: 2500,
+    })
+  }
+
+  toggleManage()   // 退出多选模式并清空选择
+  await refresh()
 }
 
 /**
@@ -439,6 +721,20 @@ function formatTime(timestamp: number): string {
   padding: 24rpx;
   background-color: #fff;
   border-radius: 16rpx;
+  /* 多选模式下：左侧复选框 + 右侧卡片内容并排 */
+  display: flex;
+  align-items: center;
+}
+
+.card-check {
+  margin-right: 20rpx;
+  padding: 12rpx 0;
+}
+
+.card-body {
+  flex: 1;
+  /* 不加这行，超长订单号会把卡片撑破（flex 子项默认不收缩到内容宽度以下） */
+  min-width: 0;
 }
 
 .card-header {
@@ -531,5 +827,142 @@ function formatTime(timestamp: number): string {
 
 .bottom-placeholder {
   height: 40rpx;
+}
+
+/* 多选模式下底部浮着操作条，留出高度，否则最后一张卡片会被压住 */
+.bottom-placeholder.with-batch-bar {
+  height: 160rpx;
+}
+
+/* ========== 搜索栏 + 批量入口 ========== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  background-color: #fff;
+}
+
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 64rpx;
+  padding: 0 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 32rpx;
+}
+
+.search-icon {
+  font-size: 24rpx;
+  margin-right: 10rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 26rpx;
+}
+
+.search-placeholder {
+  color: #bbb;
+}
+
+.search-clear {
+  font-size: 26rpx;
+  color: #bbb;
+  padding: 0 6rpx 0 12rpx;
+}
+
+.manage-btn {
+  padding: 8rpx 4rpx 8rpx 20rpx;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.manage-btn.active {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* ========== 复选框 ========== */
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 50%;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.checkbox.checked {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+/* 置灰：非待支付订单不可取消，也不参与全选 */
+.checkbox.disabled {
+  background-color: #f2f2f2;
+  border-color: #e5e5e5;
+}
+
+.check-mark {
+  font-size: 24rpx;
+  line-height: 1;
+  color: #fff;
+}
+
+/* ========== 批量操作条 ========== */
+.batch-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  /* 避开 iPhone 底部安全区 */
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background-color: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
+  z-index: 10;
+}
+
+.batch-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.batch-all {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.batch-right {
+  display: flex;
+  align-items: center;
+}
+
+.batch-count {
+  margin-right: 20rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.batch-btn {
+  padding: 14rpx 36rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+/* 放在渐变之后，才能覆盖掉上面的 background */
+.batch-btn.disabled {
+  background: #cccccc;
 }
 </style>
