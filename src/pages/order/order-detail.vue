@@ -352,10 +352,10 @@ function goOrderList() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .detail-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 /* ========== 加载状态 ========== */
@@ -368,7 +368,7 @@ function goOrderList() {
 
 .loading-text {
   font-size: 28rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 /* ========== 状态横幅 ========== */
@@ -407,18 +407,18 @@ function goOrderList() {
 .address-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
   margin-right: 20rpx;
 }
 
 .address-phone {
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .address-detail {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
   line-height: 1.5;
 }
 
@@ -457,7 +457,7 @@ function goOrderList() {
 
 .goods-name {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -466,7 +466,7 @@ function goOrderList() {
 
 .goods-specs {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .goods-right {
@@ -478,13 +478,13 @@ function goOrderList() {
 
 .goods-price {
   font-size: 28rpx;
-  color: #e7493b;
+  color: $app-color-price;
   font-weight: 500;
 }
 
 .goods-qty {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-top: 4rpx;
 }
 
@@ -498,12 +498,12 @@ function goOrderList() {
 
 .summary-label {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .summary-value {
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .summary-row.total {
@@ -515,7 +515,7 @@ function goOrderList() {
 .summary-total {
   font-size: 34rpx;
   font-weight: 700;
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 /* ========== 订单信息 ========== */
@@ -527,14 +527,14 @@ function goOrderList() {
 
 .info-label {
   font-size: 26rpx;
-  color: #999;
+  color: $app-text-muted;
   flex-shrink: 0;
   margin-right: 20rpx;
 }
 
 .info-value {
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
   text-align: right;
   word-break: break-all;
 }
@@ -566,13 +566,13 @@ function goOrderList() {
 }
 
 .action-btn.primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
 }
 
 .action-btn.ghost {
   border: 2rpx solid #ddd;
-  color: #666;
+  color: $app-text-secondary;
   background-color: #fff;
 }
 
@@ -588,12 +588,12 @@ function goOrderList() {
 
 .not-found-text {
   font-size: 30rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .not-found-btn {
   padding: 16rpx 50rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 28rpx;
   border-radius: 40rpx;

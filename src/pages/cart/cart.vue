@@ -35,7 +35,7 @@
             共 {{ cartList.length }} 件商品
           </text>
           <view class="edit-toggle" @click="isEditMode = !isEditMode">
-            <text :style="{ color: isEditMode ? '#e7493b' : '#667eea' }">
+            <text :style="{ color: isEditMode ? THEME.price : THEME.primary }">
               {{ isEditMode ? '完成' : '管理' }}
             </text>
           </view>
@@ -139,6 +139,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { formatCents, formatMoney, calcTotalCents } from '@/utils/money'
 import { readCart, syncCartOnStartup, writeCart } from '@/utils/cart'
 import type { CartItem } from '@/utils/cart'
+import { THEME } from '@/theme'
 
 // ============================================================
 // 响应式数据
@@ -270,12 +271,12 @@ onShow(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .cart-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 /* ========== 空状态 ========== */
@@ -296,7 +297,7 @@ onShow(() => {
 
 .empty-text {
   font-size: 32rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-bottom: 12rpx;
 }
 
@@ -308,7 +309,7 @@ onShow(() => {
 
 .empty-btn {
   padding: 16rpx 60rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 28rpx;
   border-radius: 40rpx;
@@ -326,7 +327,7 @@ onShow(() => {
 
 .edit-bar-hint {
   font-size: 26rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .edit-toggle {
@@ -363,8 +364,8 @@ onShow(() => {
 }
 
 .check-box.checked {
-  background-color: #667eea;
-  border-color: #667eea;
+  background-color: $app-color-primary;
+  border-color: $app-color-primary;
 }
 
 .check-icon {
@@ -399,7 +400,7 @@ onShow(() => {
 
 .item-name {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -409,7 +410,7 @@ onShow(() => {
 
 .item-specs {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-bottom: 16rpx;
 }
 
@@ -422,7 +423,7 @@ onShow(() => {
 .item-price {
   font-size: 32rpx;
   font-weight: 600;
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 /* ========== 数量控制 ========== */
@@ -441,7 +442,7 @@ onShow(() => {
   border: 2rpx solid #ddd;
   border-radius: 50%;
   font-size: 32rpx;
-  color: #666;
+  color: $app-text-secondary;
   background-color: #fafafa;
 }
 
@@ -453,7 +454,7 @@ onShow(() => {
   width: 60rpx;
   text-align: center;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 /* ========== 删除按钮 ========== */
@@ -463,7 +464,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #e7493b;
+  background-color: $app-color-price;
   border-radius: 12rpx;
   margin-left: 16rpx;
   flex-shrink: 0;
@@ -497,7 +498,7 @@ onShow(() => {
 
 .select-all-text {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .footer-right {
@@ -513,18 +514,18 @@ onShow(() => {
 
 .total-label {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .total-price {
   font-size: 36rpx;
   font-weight: 700;
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 .settle-btn {
   padding: 16rpx 40rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 28rpx;
   font-weight: 500;
@@ -537,7 +538,7 @@ onShow(() => {
 
 .batch-delete-btn {
   padding: 16rpx 40rpx;
-  background-color: #e7493b;
+  background-color: $app-color-price;
   color: #fff;
   font-size: 28rpx;
   font-weight: 500;

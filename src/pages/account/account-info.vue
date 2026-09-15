@@ -597,10 +597,10 @@ onShow(() => {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .account-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   padding-bottom: 40rpx;
 }
 
@@ -609,7 +609,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   padding: 48rpx 32rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
 }
 
 .avatar-wrap {
@@ -668,7 +668,7 @@ onShow(() => {
   padding: 6rpx 20rpx;
   border-radius: 30rpx;
   font-size: 22rpx;
-  color: #667eea;
+  color: $app-color-primary;
   background: rgba(255, 255, 255, 0.9);
 }
 
@@ -704,7 +704,7 @@ onShow(() => {
 .bind-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .bind-desc {
@@ -741,7 +741,7 @@ onShow(() => {
 .section-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 /* ========== 账号绑定入口 ========== */
@@ -749,7 +749,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   padding: 26rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid $app-border-color;
 }
 
 .bind-row:last-child {
@@ -768,7 +768,7 @@ onShow(() => {
 .bind-row-name {
   flex: 1;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .bind-row-right {
@@ -787,7 +787,7 @@ onShow(() => {
 }
 
 .bind-row-value.bound {
-  color: #52c41a;
+  color: $app-color-success;
 }
 
 .bind-row-arrow {
@@ -806,7 +806,7 @@ onShow(() => {
   align-items: flex-start;
   justify-content: space-between;
   padding: 18rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid $app-border-color;
   gap: 24rpx;
 }
 
@@ -816,13 +816,13 @@ onShow(() => {
 
 .info-label {
   font-size: 26rpx;
-  color: #999;
+  color: $app-text-muted;
   flex-shrink: 0;
 }
 
 .info-value {
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
   word-break: break-all;
   text-align: right;
   line-height: 1.4;
@@ -833,7 +833,7 @@ onShow(() => {
   margin: 30rpx 24rpx 0;
   height: 88rpx;
   line-height: 88rpx;
-  background: #ff4757;
+  background: $app-color-price-alt;
   color: white;
   text-align: center;
   border-radius: 44rpx;
@@ -880,19 +880,19 @@ onShow(() => {
 .sheet-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .sheet-close {
   font-size: 32rpx;
-  color: #999;
+  color: $app-text-muted;
   padding: 0 8rpx;
 }
 
 .sheet-tip {
   display: block;
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-bottom: 32rpx;
 }
 
@@ -922,7 +922,7 @@ onShow(() => {
 
 .picker-placeholder {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .nick-input-wrap {
@@ -955,11 +955,11 @@ onShow(() => {
 
 .sheet-btn.cancel {
   background: #f0f0f0;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .sheet-btn.save {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
 }
 </style>

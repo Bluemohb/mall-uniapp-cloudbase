@@ -193,10 +193,10 @@ function goBack() {
   <show-captcha />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .login-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: $app-gradient-primary;
   padding: 60rpx 40rpx;
   box-sizing: border-box;
 }
@@ -233,12 +233,12 @@ function goBack() {
   padding: 20rpx;
   background: #f8f9fa;
   border-radius: 12rpx;
-  border-left: 6rpx solid #667eea;
+  border-left: 6rpx solid $app-color-primary;
 }
 
 .hint-text {
   font-size: 24rpx;
-  color: #666;
+  color: $app-text-secondary;
   line-height: 1.4;
 }
 
@@ -249,7 +249,7 @@ function goBack() {
 
 .label {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   display: block;
   margin-bottom: 20rpx;
   font-weight: 500;
@@ -268,7 +268,7 @@ function goBack() {
 }
 
 .input-field:focus {
-  border-color: #667eea;
+  border-color: $app-color-primary;
   background: white;
   box-shadow: 0 0 0 4rpx rgba(102, 126, 234, 0.1);
 }
@@ -283,7 +283,7 @@ function goBack() {
 
 .type-text {
   font-size: 20rpx;
-  color: #667eea;
+  color: $app-color-primary;
   background: rgba(102, 126, 234, 0.1);
   padding: 8rpx 16rpx;
   border-radius: 20rpx;
@@ -318,7 +318,7 @@ function goBack() {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: #667eea;
+  background: $app-color-primary;
   color: white;
   border: none;
   border-radius: 12rpx;
@@ -330,7 +330,7 @@ function goBack() {
 
 .login-btn:disabled {
   background: #ccc;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .login-btn:not(:disabled):active {
@@ -346,7 +346,7 @@ function goBack() {
 
 .link-text {
   font-size: 28rpx;
-  color: #667eea;
+  color: $app-color-primary;
   text-decoration: underline;
 }
 
@@ -372,6 +372,6 @@ function goBack() {
 
 .loading-content text {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 </style>

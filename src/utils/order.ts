@@ -16,6 +16,7 @@
  */
 import { app } from './cloudbase'
 import { toCents } from './money'
+import { THEME } from '../theme'
 
 /**
  * 订单状态流转图：
@@ -32,11 +33,11 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'completed' | 'cancel
  * color: 状态标签颜色（配合界面主题）
  */
 export const ORDER_STATUS_MAP: Record<OrderStatus, { label: string, color: string }> = {
-  pending: { label: '待支付', color: '#e7493b' },
-  paid: { label: '已支付', color: '#667eea' },
-  shipped: { label: '已发货', color: '#52c41a' },
-  completed: { label: '已完成', color: '#999999' },
-  cancelled: { label: '已取消', color: '#bbbbbb' },
+  pending: { label: '待支付', color: THEME.price },
+  paid: { label: '已支付', color: THEME.primary },
+  shipped: { label: '已发货', color: THEME.success },
+  completed: { label: '已完成', color: THEME.textMuted },
+  cancelled: { label: '已取消', color: THEME.textDisabled },
 }
 
 /**

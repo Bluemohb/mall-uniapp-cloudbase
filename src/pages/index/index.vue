@@ -18,6 +18,7 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
+import { THEME } from '@/theme'
 
 // 商品卡片公共组件：本项目的 easycom 自动扫描未生效（编译产物里组件未被注册），
 // 必须显式引入，由 <script setup> 自动注册到本页面
@@ -57,14 +58,15 @@ const recommendList = ref<Product[]>([])
 
 /** Banner 轮播数据（渐变卡片，不依赖外部图片） */
 const banners = [
-  { title: '夏日焕新', sub: '新品上市 限时优惠', bg: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  // 首屏 banner 跟随主题；后两张为营销内容配色，不随主题变化
+  { title: '夏日焕新', sub: '新品上市 限时优惠', bg: THEME.gradientPrimary },
   { title: '精选好物', sub: '全场包邮 品质保障', bg: 'linear-gradient(135deg, #f093fb, #f5576c)' },
   { title: '会员专享', sub: '登录立享专属价格', bg: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
 ]
 
 /** 分类金刚区（value 传给商品列表页作为 category 过滤条件） */
 const categories: Category[] = [
-  { name: '全部商品', icon: '🛍️', value: '', bg: '#667eea' },
+  { name: '全部商品', icon: '🛍️', value: '', bg: THEME.primary },
   { name: '数码', icon: '📱', value: '数码', bg: '#4facfe' },
   { name: '服饰', icon: '👕', value: '服饰', bg: '#f093fb' },
   { name: '食品', icon: '🍎', value: '食品', bg: '#f5576c' },
@@ -214,17 +216,17 @@ onShow(() => {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .home-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   padding-bottom: 30rpx;
 }
 
 /* ========== 搜索栏 ========== */
 .search-bar {
   padding: 20rpx 24rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
 }
 
 .search-input {
@@ -317,7 +319,7 @@ onShow(() => {
 
 .category-name {
   font-size: 24rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 /* ========== 推荐商品 ========== */
@@ -338,12 +340,12 @@ onShow(() => {
 .section-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .section-more {
   font-size: 26rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 /* 卡片本身样式已抽到 components/goods-card，这里只负责网格布局 */

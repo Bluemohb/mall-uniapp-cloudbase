@@ -430,10 +430,10 @@ onReachBottom(() => {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .search-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 /* ========== 顶部搜索框 ========== */
@@ -441,7 +441,7 @@ onReachBottom(() => {
   display: flex;
   align-items: center;
   padding: 16rpx 24rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
 }
 
 .search-input-wrap {
@@ -463,7 +463,7 @@ onReachBottom(() => {
   flex: 1;
   height: 68rpx;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .search-placeholder {
@@ -505,12 +505,12 @@ onReachBottom(() => {
 .block-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .clear-history {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .tag-list {
@@ -526,11 +526,11 @@ onReachBottom(() => {
   padding: 10rpx 24rpx;
   border-radius: 30rpx;
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .history-tag {
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 .tag-del {
@@ -541,7 +541,7 @@ onReachBottom(() => {
 
 .hot-tag {
   background-color: #f0f3ff;
-  color: #667eea;
+  color: $app-color-primary;
 }
 
 .hot-rank {
@@ -557,7 +557,7 @@ onReachBottom(() => {
 
 .result-title {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .product-grid {
@@ -594,7 +594,7 @@ onReachBottom(() => {
 
 .product-name {
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
   display: -webkit-box;
   line-clamp: 2;
   -webkit-line-clamp: 2;
@@ -615,18 +615,18 @@ onReachBottom(() => {
 .price-current {
   font-size: 32rpx;
   font-weight: bold;
-  color: #ff4757;
+  color: $app-color-price-alt;
 }
 
 .price-original {
   font-size: 22rpx;
-  color: #999;
+  color: $app-text-muted;
   text-decoration: line-through;
 }
 
 .product-sales {
   font-size: 22rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 /* ========== 空状态 ========== */
@@ -644,7 +644,7 @@ onReachBottom(() => {
 
 .empty-text {
   font-size: 30rpx;
-  color: #666;
+  color: $app-text-secondary;
   margin-bottom: 12rpx;
 }
 
@@ -666,7 +666,7 @@ onReachBottom(() => {
   border-radius: 30rpx;
   background-color: #f0f3ff;
   font-size: 24rpx;
-  color: #667eea;
+  color: $app-color-primary;
 }
 
 .bottom-space {

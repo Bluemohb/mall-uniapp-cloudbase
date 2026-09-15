@@ -701,12 +701,12 @@ function formatTime(timestamp: number): string {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .order-list-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 /* ========== 状态筛选栏 ========== */
@@ -723,12 +723,12 @@ function formatTime(timestamp: number): string {
 .tab-item {
   padding: 20rpx 26rpx;
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
   position: relative;
 }
 
 .tab-item.active {
-  color: #667eea;
+  color: $app-color-primary;
   font-weight: 600;
 }
 
@@ -740,7 +740,7 @@ function formatTime(timestamp: number): string {
   right: 30%;
   bottom: 8rpx;
   height: 6rpx;
-  background-color: #667eea;
+  background-color: $app-color-primary;
   border-radius: 3rpx;
 }
 
@@ -767,13 +767,13 @@ function formatTime(timestamp: number): string {
 
 .empty-text {
   font-size: 30rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-bottom: 40rpx;
 }
 
 .empty-btn {
   padding: 14rpx 56rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 28rpx;
   border-radius: 40rpx;
@@ -810,7 +810,7 @@ function formatTime(timestamp: number): string {
 
 .order-no {
   font-size: 26rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .order-status {
@@ -835,7 +835,7 @@ function formatTime(timestamp: number): string {
 
 .goods-count {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-left: 8rpx;
 }
 
@@ -843,7 +843,7 @@ function formatTime(timestamp: number): string {
 .goods-name {
   margin-bottom: 20rpx;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   line-height: 1.4;
   /* 长商品名单行截断，别把卡片撑破 */
   overflow: hidden;
@@ -872,7 +872,7 @@ function formatTime(timestamp: number): string {
 .total-price {
   font-size: 30rpx;
   font-weight: 700;
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 .mini-btn {
@@ -883,13 +883,13 @@ function formatTime(timestamp: number): string {
 }
 
 .mini-btn.primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
 }
 
 .mini-btn.ghost {
   border: 2rpx solid #ddd;
-  color: #666;
+  color: $app-text-secondary;
   background-color: #fff;
 }
 
@@ -924,7 +924,7 @@ function formatTime(timestamp: number): string {
   align-items: center;
   height: 64rpx;
   padding: 0 20rpx;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   border-radius: 32rpx;
 }
 
@@ -952,11 +952,11 @@ function formatTime(timestamp: number): string {
 .manage-btn {
   padding: 8rpx 4rpx 8rpx 20rpx;
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .manage-btn.active {
-  color: #667eea;
+  color: $app-color-primary;
   font-weight: 600;
 }
 
@@ -974,8 +974,8 @@ function formatTime(timestamp: number): string {
 }
 
 .checkbox.checked {
-  background-color: #667eea;
-  border-color: #667eea;
+  background-color: $app-color-primary;
+  border-color: $app-color-primary;
 }
 
 /* 置灰：非待支付订单不可取消，也不参与全选 */
@@ -1015,7 +1015,7 @@ function formatTime(timestamp: number): string {
 
 .batch-all {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .batch-right {
@@ -1026,7 +1026,7 @@ function formatTime(timestamp: number): string {
 .batch-count {
   margin-right: 20rpx;
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .batch-btn {
@@ -1034,7 +1034,7 @@ function formatTime(timestamp: number): string {
   border-radius: 40rpx;
   font-size: 26rpx;
   color: #fff;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
 }
 
 /* 放在渐变之后，才能覆盖掉上面的 background */

@@ -421,11 +421,11 @@ function clearCategory() {
   scoped 表示这些样式只作用于当前组件，不会影响其他页面
   rpx 是微信小程序专用单位，750rpx = 屏幕宽度
 -->
-<style scoped>
+<style scoped lang="scss">
 /* 页面容器 */
 .products-page {
   padding: 20rpx;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   min-height: 100vh;
 }
 
@@ -462,13 +462,13 @@ function clearCategory() {
   padding: 16rpx 8rpx 20rpx;
   font-size: 28rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .category-clear {
   font-size: 24rpx;
   font-weight: normal;
-  color: #667eea;
+  color: $app-color-primary;
 }
 
 /* ========== 商品网格 ========== */
@@ -498,7 +498,7 @@ function clearCategory() {
 
 .empty-text {
   font-size: 32rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-bottom: 10rpx;
 }
 

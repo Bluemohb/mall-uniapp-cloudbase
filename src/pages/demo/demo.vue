@@ -517,10 +517,10 @@ async function downloadFile() {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .container {
   padding: 20rpx;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   min-height: 100vh;
 }
 
@@ -532,13 +532,13 @@ async function downloadFile() {
 .title {
   font-size: 48rpx;
   font-weight: bold;
-  color: #333;
+  color: $app-text-primary;
   display: block;
 }
 
 .subtitle {
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
   margin-top: 10rpx;
   display: block;
 }
@@ -554,7 +554,7 @@ async function downloadFile() {
 .section-title {
   font-size: 36rpx;
   font-weight: bold;
-  color: #333;
+  color: $app-text-primary;
   margin-bottom: 20rpx;
 }
 
@@ -571,7 +571,7 @@ async function downloadFile() {
 }
 
 .status-text {
-  color: #333;
+  color: $app-text-primary;
   font-size: 28rpx;
 }
 
@@ -581,7 +581,7 @@ async function downloadFile() {
 
 .auth-text {
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .button-group {
@@ -604,7 +604,7 @@ async function downloadFile() {
 
 .btn-secondary {
   background-color: #f0f0f0;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .btn:disabled {
@@ -635,13 +635,13 @@ async function downloadFile() {
 
 .result-title {
   font-weight: bold;
-  color: #333;
+  color: $app-text-primary;
   display: block;
   margin-bottom: 10rpx;
 }
 
 .result-text {
-  color: #666;
+  color: $app-text-secondary;
   font-size: 24rpx;
   word-break: break-all;
 }
@@ -659,7 +659,7 @@ async function downloadFile() {
 
 .record-text {
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .progress-bar {
@@ -683,7 +683,7 @@ async function downloadFile() {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 24rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .loading-overlay {

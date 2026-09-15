@@ -268,10 +268,10 @@ onShow(() => {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .profile-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   padding-bottom: 40rpx;
 }
 
@@ -280,7 +280,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   padding: 48rpx 32rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
 }
 
 .avatar-wrap {
@@ -359,12 +359,12 @@ onShow(() => {
 .section-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .section-more {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 /* ========== 我的订单 ========== */
@@ -386,7 +386,7 @@ onShow(() => {
 
 .entry-name {
   font-size: 24rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 /* ========== 服务列表 ========== */
@@ -398,7 +398,7 @@ onShow(() => {
   display: flex;
   align-items: center;
   padding: 26rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid $app-border-color;
 }
 
 .menu-item:last-child {
@@ -413,7 +413,7 @@ onShow(() => {
 .menu-text {
   flex: 1;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .menu-arrow {

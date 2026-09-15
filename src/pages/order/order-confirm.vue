@@ -371,10 +371,10 @@ function removePurchasedFromCart() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .confirm-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   padding-bottom: 160rpx;
 }
 
@@ -402,18 +402,18 @@ function removePurchasedFromCart() {
 .address-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
   margin-right: 20rpx;
 }
 
 .address-phone {
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .address-detail {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
   line-height: 1.5;
 }
 
@@ -430,7 +430,7 @@ function removePurchasedFromCart() {
 
 .address-empty-text {
   font-size: 30rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .address-arrow {
@@ -452,7 +452,7 @@ function removePurchasedFromCart() {
 .card-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
   margin-bottom: 20rpx;
 }
 
@@ -481,7 +481,7 @@ function removePurchasedFromCart() {
 
 .goods-name {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -490,7 +490,7 @@ function removePurchasedFromCart() {
 
 .goods-specs {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .goods-right {
@@ -502,13 +502,13 @@ function removePurchasedFromCart() {
 
 .goods-price {
   font-size: 28rpx;
-  color: #e7493b;
+  color: $app-color-price;
   font-weight: 500;
 }
 
 .goods-qty {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-top: 4rpx;
 }
 
@@ -518,7 +518,7 @@ function removePurchasedFromCart() {
   border-radius: 12rpx;
   padding: 16rpx 20rpx;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 /* ========== 金额汇总 ========== */
@@ -531,12 +531,12 @@ function removePurchasedFromCart() {
 
 .summary-label {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .summary-value {
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .summary-row.total {
@@ -548,7 +548,7 @@ function removePurchasedFromCart() {
 .summary-total {
   font-size: 34rpx;
   font-weight: 700;
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 /* ========== 底部提交栏 ========== */
@@ -573,18 +573,18 @@ function removePurchasedFromCart() {
 
 .footer-label {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .footer-price {
   font-size: 36rpx;
   font-weight: 700;
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 .submit-btn {
   padding: 18rpx 50rpx;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 30rpx;
   font-weight: 500;

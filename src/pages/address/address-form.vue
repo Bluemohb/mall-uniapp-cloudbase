@@ -71,7 +71,7 @@
         <text class="form-label">设为默认地址</text>
         <switch
           :checked="form.isDefault"
-          color="#667eea"
+          :color="THEME.primary"
           @change="onSwitchChange"
         />
       </view>
@@ -97,6 +97,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { app, getUid } from '@/utils/cloudbase'
 import { CACHE_KEYS, removeCache } from '@/utils/cache'
+import { THEME } from '@/theme'
 
 // ============================================================
 // 类型定义
@@ -346,10 +347,10 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .address-form-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   padding: 20rpx 0;
 }
 
@@ -375,7 +376,7 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
 .form-label {
   width: 150rpx;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -383,7 +384,7 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
 .form-input {
   flex: 1;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   text-align: right;
 }
 
@@ -402,7 +403,7 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
 
 .picker-display {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   text-align: right;
 }
 
@@ -434,7 +435,7 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
   align-items: center;
   justify-content: center;
   padding: 24rpx 0;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 30rpx;
   font-weight: 500;
@@ -447,7 +448,7 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
   justify-content: center;
   padding: 24rpx 0;
   background-color: #fff;
-  color: #999;
+  color: $app-text-muted;
   font-size: 28rpx;
   border-radius: 44rpx;
   border: 2rpx solid #eee;

@@ -250,12 +250,12 @@ function onDelete(id: string, index: number) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .address-list-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 /* ========== 空状态 ========== */
@@ -276,7 +276,7 @@ function onDelete(id: string, index: number) {
 
 .empty-text {
   font-size: 32rpx;
-  color: #999;
+  color: $app-text-muted;
   margin-bottom: 12rpx;
 }
 
@@ -321,14 +321,14 @@ function onDelete(id: string, index: number) {
 }
 
 .radio-dot.active {
-  border-color: #667eea;
+  border-color: $app-color-primary;
 }
 
 .radio-inner {
   width: 22rpx;
   height: 22rpx;
   border-radius: 50%;
-  background-color: #667eea;
+  background-color: $app-color-primary;
 }
 
 .card-content {
@@ -346,13 +346,13 @@ function onDelete(id: string, index: number) {
 .contact-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
   margin-right: 20rpx;
 }
 
 .contact-phone {
   font-size: 28rpx;
-  color: #666;
+  color: $app-text-secondary;
 }
 
 .default-tag {
@@ -365,14 +365,14 @@ function onDelete(id: string, index: number) {
 
 .default-tag text {
   font-size: 22rpx;
-  color: #667eea;
+  color: $app-color-primary;
   font-weight: 500;
 }
 
 /* ========== 地址文本 ========== */
 .address-text {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
   line-height: 1.5;
   word-break: break-all;
 }
@@ -389,15 +389,15 @@ function onDelete(id: string, index: number) {
 
 .action-link text {
   font-size: 24rpx;
-  color: #667eea;
+  color: $app-color-primary;
 }
 
 .action-edit text {
-  color: #52c41a;
+  color: $app-color-success;
 }
 
 .action-delete text {
-  color: #e7493b;
+  color: $app-color-price;
 }
 
 /* ========== 底部占位 ========== */
@@ -419,7 +419,7 @@ function onDelete(id: string, index: number) {
   justify-content: center;
   gap: 8rpx;
   padding: 24rpx 0;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: $app-gradient-primary;
   color: #fff;
   font-size: 30rpx;
   font-weight: 500;
@@ -443,7 +443,7 @@ function onDelete(id: string, index: number) {
   align-items: center;
   justify-content: center;
   font-size: 28rpx;
-  color: #999;
+  color: $app-text-muted;
   z-index: 100;
 }
 </style>

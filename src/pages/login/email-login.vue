@@ -186,10 +186,10 @@ onUnmounted(() => {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .login-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: $app-gradient-primary;
   padding: 60rpx 40rpx;
   box-sizing: border-box;
 }
@@ -226,7 +226,7 @@ onUnmounted(() => {
 
 .label {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   display: block;
   margin-bottom: 20rpx;
   font-weight: 500;
@@ -244,7 +244,7 @@ onUnmounted(() => {
 }
 
 .input-field:focus {
-  border-color: #667eea;
+  border-color: $app-color-primary;
   background: white;
 }
 
@@ -262,7 +262,7 @@ onUnmounted(() => {
   width: 200rpx;
   height: 88rpx;
   line-height: 88rpx;
-  background: #667eea;
+  background: $app-color-primary;
   color: white;
   border: none;
   border-radius: 12rpx;
@@ -272,14 +272,14 @@ onUnmounted(() => {
 
 .get-code-btn:disabled {
   background: #ccc;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .login-btn {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: #667eea;
+  background: $app-color-primary;
   color: white;
   border: none;
   border-radius: 12rpx;
@@ -290,7 +290,7 @@ onUnmounted(() => {
 
 .login-btn:disabled {
   background: #ccc;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .back-login {
@@ -300,7 +300,7 @@ onUnmounted(() => {
 
 .link-text {
   font-size: 28rpx;
-  color: #667eea;
+  color: $app-color-primary;
   text-decoration: underline;
 }
 
@@ -326,6 +326,6 @@ onUnmounted(() => {
 
 .loading-content text {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 </style>

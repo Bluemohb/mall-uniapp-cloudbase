@@ -235,7 +235,7 @@ onUnmounted(() => {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .captcha-container {
   width: 320px;
   max-width: 90vw;
@@ -256,19 +256,19 @@ onUnmounted(() => {
 .title {
   font-weight: bold;
   font-size: 18px;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .close-btn {
   font-size: 20px;
-  color: #999;
+  color: $app-text-muted;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f5f5f5;
+  background: $app-bg-page;
 }
 
 .close-btn:active {
@@ -305,7 +305,7 @@ onUnmounted(() => {
 
 .captcha-placeholder-text {
   font-size: 14px;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .captcha-input {
@@ -340,7 +340,7 @@ onUnmounted(() => {
 
 .cancel-btn {
   background-color: #f0f0f0;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .cancel-btn:active {
@@ -354,6 +354,6 @@ onUnmounted(() => {
 
 .confirm-btn.is-disabled {
   background-color: #ccc;
-  color: #999;
+  color: $app-text-muted;
 }
 </style>

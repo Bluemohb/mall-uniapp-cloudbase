@@ -35,6 +35,7 @@ import { isFavorite, syncFavoritesOnStartup, toggleFavorite as toggleFavoriteSto
 
 // 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import { THEME } from '@/theme'
 
 // ============================================================
 // 第2部分：数据类型定义
@@ -521,7 +522,7 @@ onShow(() => {
         :autoplay="true"
         :circular="true"
         indicator-color="rgba(255,255,255,0.5)"
-        indicator-active-color="#667eea"
+        :indicator-active-color="THEME.primary"
         @change="onSwiperChange"
       >
         <swiper-item
@@ -657,10 +658,10 @@ onShow(() => {
   样式部分
   ============================================================
 -->
-<style scoped>
+<style scoped lang="scss">
 .detail-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
   padding-bottom: 120rpx;  /* 留出底部栏高度 */
 }
 
@@ -672,7 +673,7 @@ onShow(() => {
 }
 .loading-text {
   font-size: 28rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 /* ========== 图片轮播 ========== */
@@ -703,19 +704,19 @@ onShow(() => {
 .price {
   font-size: 48rpx;
   font-weight: bold;
-  color: #ff4757;
+  color: $app-color-price-alt;
 }
 
 .original-price {
   font-size: 26rpx;
-  color: #999;
+  color: $app-text-muted;
   text-decoration: line-through;
 }
 
 .product-name {
   font-size: 32rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
   line-height: 1.5;
   display: block;
   margin-bottom: 12rpx;
@@ -728,7 +729,7 @@ onShow(() => {
 
 .meta-item {
   font-size: 24rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .meta-item.rating {
@@ -753,7 +754,7 @@ onShow(() => {
 
 .spec-name {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
   display: block;
   margin-bottom: 14rpx;
 }
@@ -766,17 +767,17 @@ onShow(() => {
 
 .spec-tag {
   padding: 10rpx 28rpx;
-  background: #f5f5f5;
+  background: $app-bg-page;
   border-radius: 8rpx;
   font-size: 26rpx;
-  color: #333;
+  color: $app-text-primary;
   border: 2rpx solid transparent;
 }
 
 .spec-tag--active {
   background: #ede9fe;
-  color: #667eea;
-  border-color: #667eea;
+  color: $app-color-primary;
+  border-color: $app-color-primary;
   font-weight: 600;
 }
 
@@ -792,7 +793,7 @@ onShow(() => {
 
 .quantity-label {
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .quantity-control {
@@ -807,9 +808,9 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
+  background: $app-bg-page;
   font-size: 32rpx;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .quantity-btn:first-child {
@@ -828,7 +829,7 @@ onShow(() => {
   width: 80rpx;
   text-align: center;
   font-size: 28rpx;
-  color: #333;
+  color: $app-text-primary;
   background: #fafafa;
   height: 56rpx;
   line-height: 56rpx;
@@ -843,14 +844,14 @@ onShow(() => {
 .desc-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #333;
+  color: $app-text-primary;
   display: block;
   margin-bottom: 12rpx;
 }
 
 .desc-content {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
   line-height: 1.8;
   display: block;
 }
@@ -884,15 +885,15 @@ onShow(() => {
 
 .icon-label {
   font-size: 20rpx;
-  color: #999;
+  color: $app-text-muted;
 }
 
 .btn-cart {
   flex: 1;
   height: 72rpx;
   line-height: 72rpx;
-  background: linear-gradient(135deg, #ffd700, #ffb800);
-  color: #333;
+  background: $app-gradient-star;
+  color: $app-text-primary;
   font-size: 28rpx;
   font-weight: 600;
   border-radius: 36rpx;
@@ -904,7 +905,7 @@ onShow(() => {
   flex: 1;
   height: 72rpx;
   line-height: 72rpx;
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  background: $app-gradient-danger;
   color: #fff;
   font-size: 28rpx;
   font-weight: 600;

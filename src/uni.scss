@@ -93,6 +93,7 @@ $app-color-price-alt: #ff4757;
 $app-text-primary: #333;
 $app-text-secondary: #666;
 $app-text-muted: #999;
+$app-text-disabled: #bbbbbb;
 $app-bg-page: #f5f5f5;
 $app-bg-card: #fff;
 
@@ -101,3 +102,20 @@ $app-radius-sm: 8rpx;
 $app-radius-md: 16rpx;
 $app-radius-pill: 44rpx;
 $app-shadow-card: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+
+/* ============================================================
+ * 语义色：成功 / 危险 / 评分星
+ * 与 src/theme.ts 中的 THEME 常量一一对应，改色时两处需同步
+ * ============================================================ */
+$app-color-success: #52c41a;
+
+$app-color-danger: #ff6b6b;
+$app-color-danger-deep: #ee5a24;
+$app-gradient-danger: linear-gradient(135deg, #ff6b6b, #ee5a24);
+
+$app-color-star: #ffd700;
+$app-color-star-deep: #ffb800;
+$app-gradient-star: linear-gradient(135deg, #ffd700, #ffb800);
+
+/* 边框 / 分割线（与页面底色同值，保证既有视觉不变） */
+$app-border-color: #f5f5f5;

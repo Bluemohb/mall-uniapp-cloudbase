@@ -279,10 +279,10 @@ function emailLogin() {
   </view>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .login-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: $app-gradient-primary;
   padding: 60rpx 40rpx;
   box-sizing: border-box;
 }
@@ -376,7 +376,7 @@ function emailLogin() {
 .option-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .option-tag {
@@ -384,7 +384,7 @@ function emailLogin() {
   border-radius: 20rpx;
   font-size: 22rpx;
   color: #fff;
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  background: $app-gradient-danger;
 }
 
 .login-option.recommended {
@@ -393,7 +393,7 @@ function emailLogin() {
 
 .option-desc {
   font-size: 26rpx;
-  color: #666;
+  color: $app-text-secondary;
   line-height: 1.4;
 }
 

@@ -4,7 +4,6 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "首页",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -12,7 +11,6 @@
       "path": "pages/search/search",
       "style": {
         "navigationBarTitleText": "搜索",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white",
         "onReachBottomDistance": 100
       }
@@ -29,7 +27,6 @@
       "path": "pages/login/index",
       "style": {
         "navigationBarTitleText": "选择登录方式",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -37,7 +34,6 @@
       "path": "pages/login/password-login",
       "style": {
         "navigationBarTitleText": "密码登录",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -45,7 +41,6 @@
       "path": "pages/login/phone-login",
       "style": {
         "navigationBarTitleText": "手机验证码登录",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -53,7 +48,6 @@
       "path": "pages/login/email-login",
       "style": {
         "navigationBarTitleText": "邮箱验证码登录",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -61,7 +55,6 @@
       "path": "pages/profile/profile",
       "style": {
         "navigationBarTitleText": "用户信息",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -69,7 +62,6 @@
       "path": "pages/account/account-info",
       "style": {
         "navigationBarTitleText": "账号信息",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -77,7 +69,6 @@
       "path": "pages/products/products",
       "style": {
         "navigationBarTitleText": "商品列表",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white",
         "enablePullDownRefresh": true
       }
@@ -86,7 +77,6 @@
       "path": "pages/product-detail/product-detail",
       "style": {
         "navigationBarTitleText": "商品详情",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -94,7 +84,6 @@
       "path": "pages/favorite/favorite",
       "style": {
         "navigationBarTitleText": "我的收藏",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -102,7 +91,6 @@
       "path": "pages/cart/cart",
       "style": {
         "navigationBarTitleText": "购物车",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -110,7 +98,6 @@
       "path": "pages/address/address-list",
       "style": {
         "navigationBarTitleText": "收货地址",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -118,7 +105,6 @@
       "path": "pages/address/address-form",
       "style": {
         "navigationBarTitleText": "编辑地址",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -126,7 +112,6 @@
       "path": "pages/order/order-confirm",
       "style": {
         "navigationBarTitleText": "确认订单",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -134,7 +119,6 @@
       "path": "pages/order/order-detail",
       "style": {
         "navigationBarTitleText": "订单详情",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white"
       }
     },
@@ -142,7 +126,6 @@
       "path": "pages/order/order-list",
       "style": {
         "navigationBarTitleText": "我的订单",
-        "navigationBarBackgroundColor": "#667eea",
         "navigationBarTextStyle": "white",
         "enablePullDownRefresh": true
       }
@@ -151,11 +134,13 @@
   "globalStyle": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "CloudBase UniApp",
+    // 换主题需同步此值：小程序原生配置只吃十六进制字面量，无法复用 uni.scss 变量
     "navigationBarBackgroundColor": "#667eea",
     "backgroundColor": "#f5f5f5"
   },
   "tabBar": {
     "color": "#999999",
+    // 同上，与主题主色保持一致
     "selectedColor": "#667eea",
     "backgroundColor": "#ffffff",
     "borderStyle": "black",

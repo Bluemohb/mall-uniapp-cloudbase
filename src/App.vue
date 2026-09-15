@@ -42,10 +42,10 @@ onHide(() => {
 })
 </script>
 
-<style>
+<style lang="scss">
 /* 全局样式 */
 page {
-  background-color: #f5f5f5;
+  background-color: $app-bg-page;
 }
 
 /* 通用按钮样式 */
@@ -68,7 +68,7 @@ page {
 
 .btn-secondary {
   background-color: #f0f0f0;
-  color: #333;
+  color: $app-text-primary;
 }
 
 .btn-secondary:active {
