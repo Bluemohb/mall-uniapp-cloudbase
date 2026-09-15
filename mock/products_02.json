@@ -3,11 +3,9 @@
     "_id": "b83a427dcb1f6619388e65a947a7b36a",
     "category": "数码",
     "description": "第二代骁龙8移动平台，2K 超视网膜屏，5000mAh 长续航。",
-    "image": "https://picsum.photos/seed/phone/400/400",
+    "image": "/static/mock/phone-320.webp",
     "images": [
-      "https://picsum.photos/seed/phone1/750/750",
-      "https://picsum.photos/seed/phone2/750/750",
-      "https://picsum.photos/seed/phone3/750/750"
+      "/static/mock/phone-320.webp"
     ],
     "name": "5G 智能手机 骁龙旗舰版",
     "originalPrice": 5999,
@@ -53,11 +51,9 @@
     "_id": "47482d3e3e8d2110d67a0c03b6466d6e",
     "category": "数码",
     "description": "双馈主动降噪，通透模式，单次续航8小时。",
-    "image": "https://picsum.photos/seed/buds/400/400",
+    "image": "/static/mock/buds-320.webp",
     "images": [
-      "https://picsum.photos/seed/buds1/750/750",
-      "https://picsum.photos/seed/buds2/750/750",
-      "https://picsum.photos/seed/buds3/750/750"
+      "/static/mock/buds-320.webp"
     ],
     "name": "主动降噪真无线耳机",
     "originalPrice": 999,
@@ -86,11 +82,9 @@
     "_id": "062ea1767070a9fe496080e01a364fe9",
     "category": "数码",
     "description": "2.5K 全面屏，120Hz 高刷，四扬声器环绕声场。",
-    "image": "https://picsum.photos/seed/tablet/400/400",
+    "image": "/static/mock/tablet-320.webp",
     "images": [
-      "https://picsum.photos/seed/tablet1/750/750",
-      "https://picsum.photos/seed/tablet2/750/750",
-      "https://picsum.photos/seed/tablet3/750/750"
+      "/static/mock/tablet-320.webp"
     ],
     "name": "高刷影音平板 11英寸",
     "originalPrice": 2999,
@@ -132,11 +126,9 @@
     "_id": "688122391db52dc43a5ae9d8fa452104",
     "category": "数码",
     "description": "1.43英寸 AMOLED 屏，100+ 运动模式，5ATM 防水。",
-    "image": "https://picsum.photos/seed/watch2/400/400",
+    "image": "/static/mock/watch2-320.webp",
     "images": [
-      "https://picsum.photos/seed/watch21/750/750",
-      "https://picsum.photos/seed/watch22/750/750",
-      "https://picsum.photos/seed/watch23/750/750"
+      "/static/mock/watch2-320.webp"
     ],
     "name": "运动智能手表 血氧监测",
     "originalPrice": 1699,
@@ -165,11 +157,9 @@
     "_id": "c88dc04def33132857f776a4029fb14e",
     "category": "数码",
     "description": "三模连接，Gasket 结构，PBT 键帽手感扎实。",
-    "image": "https://picsum.photos/seed/keyboard/400/400",
+    "image": "/static/mock/keyboard-320.webp",
     "images": [
-      "https://picsum.photos/seed/keyboard1/750/750",
-      "https://picsum.photos/seed/keyboard2/750/750",
-      "https://picsum.photos/seed/keyboard3/750/750"
+      "/static/mock/keyboard-320.webp"
     ],
     "name": "无线机械键盘 热插拔",
     "originalPrice": 499,
@@ -219,11 +209,9 @@
     "_id": "0e8c0ab6678e9782edc867214952910c",
     "category": "数码",
     "description": "360° 环绕立体声，IPX7 防水，20小时续航。",
-    "image": "https://picsum.photos/seed/speaker/400/400",
+    "image": "/static/mock/speaker-320.webp",
     "images": [
-      "https://picsum.photos/seed/speaker1/750/750",
-      "https://picsum.photos/seed/speaker2/750/750",
-      "https://picsum.photos/seed/speaker3/750/750"
+      "/static/mock/speaker-320.webp"
     ],
     "name": "便携防水蓝牙音箱",
     "originalPrice": 299,
@@ -252,11 +240,9 @@
     "_id": "afe0924340cb932c3c7b661af38eaf2a",
     "category": "数码",
     "description": "22.5W 双向快充，数显电量，可上飞机。",
-    "image": "https://picsum.photos/seed/powerbank/400/400",
+    "image": "/static/mock/powerbank-320.webp",
     "images": [
-      "https://picsum.photos/seed/powerbank1/750/750",
-      "https://picsum.photos/seed/powerbank2/750/750",
-      "https://picsum.photos/seed/powerbank3/750/750"
+      "/static/mock/powerbank-320.webp"
     ],
     "name": "20000mAh 快充移动电源",
     "originalPrice": 199,
@@ -285,11 +271,9 @@
     "_id": "4a755db53f58a4d0fdcae1f3cdb237bc",
     "category": "数码",
     "description": "IPS 硬屏，75Hz 刷新率，低蓝光不闪屏。",
-    "image": "https://picsum.photos/seed/monitor/400/400",
+    "image": "/static/mock/monitor-320.webp",
     "images": [
-      "https://picsum.photos/seed/monitor1/750/750",
-      "https://picsum.photos/seed/monitor2/750/750",
-      "https://picsum.photos/seed/monitor3/750/750"
+      "/static/mock/monitor-320.webp"
     ],
     "name": "27英寸 2K 显示器",
     "originalPrice": 1599,
@@ -318,11 +302,9 @@
     "_id": "7bab19945eaa789a89df2e2758274650",
     "category": "数码",
     "description": "2420万像素 APS-C，4K 视频，翻转触摸屏。",
-    "image": "https://picsum.photos/seed/camera/400/400",
+    "image": "/static/mock/camera-320.webp",
     "images": [
-      "https://picsum.photos/seed/camera1/750/750",
-      "https://picsum.photos/seed/camera2/750/750",
-      "https://picsum.photos/seed/camera3/750/750"
+      "/static/mock/camera-320.webp"
     ],
     "name": "微单相机 入门套机",
     "originalPrice": 5999,
@@ -364,11 +346,9 @@
     "_id": "c0bfb0c5134f3bf678100f3542120910",
     "category": "数码",
     "description": "AX3000 速率，双频并发，Mesh 组网稳定覆盖。",
-    "image": "https://picsum.photos/seed/router/400/400",
+    "image": "/static/mock/router-320.webp",
     "images": [
-      "https://picsum.photos/seed/router1/750/750",
-      "https://picsum.photos/seed/router2/750/750",
-      "https://picsum.photos/seed/router3/750/750"
+      "/static/mock/router-320.webp"
     ],
     "name": "WiFi6 千兆路由器",
     "originalPrice": 399,
@@ -397,11 +377,9 @@
     "_id": "a7f20f66fb2d7a8129e4d8aa95484b27",
     "category": "服饰",
     "description": "230g 重磅面料，领口加固，耐洗不变形。",
-    "image": "https://picsum.photos/seed/tshirt/400/400",
+    "image": "/static/mock/tshirt-320.webp",
     "images": [
-      "https://picsum.photos/seed/tshirt1/750/750",
-      "https://picsum.photos/seed/tshirt2/750/750",
-      "https://picsum.photos/seed/tshirt3/750/750"
+      "/static/mock/tshirt-320.webp"
     ],
     "name": "重磅纯棉短袖T恤",
     "originalPrice": 129,
@@ -455,11 +433,9 @@
     "_id": "8d01987d4c4227b41aaea4d2f509232b",
     "category": "服饰",
     "description": "弹力丹宁面料，直筒版型，百搭显瘦。",
-    "image": "https://picsum.photos/seed/jeans/400/400",
+    "image": "/static/mock/jeans-320.webp",
     "images": [
-      "https://picsum.photos/seed/jeans1/750/750",
-      "https://picsum.photos/seed/jeans2/750/750",
-      "https://picsum.photos/seed/jeans3/750/750"
+      "/static/mock/jeans-320.webp"
     ],
     "name": "直筒宽松牛仔裤",
     "originalPrice": 259,
@@ -517,11 +493,9 @@
     "_id": "13b25f02fa73ac443b0f30665c2b657b",
     "category": "服饰",
     "description": "内里加绒保暖，落肩版型，简约刺绣。",
-    "image": "https://picsum.photos/seed/hoodie/400/400",
+    "image": "/static/mock/hoodie-320.webp",
     "images": [
-      "https://picsum.photos/seed/hoodie1/750/750",
-      "https://picsum.photos/seed/hoodie2/750/750",
-      "https://picsum.photos/seed/hoodie3/750/750"
+      "/static/mock/hoodie-320.webp"
     ],
     "name": "美式复古加绒卫衣",
     "originalPrice": 199,
@@ -575,11 +549,9 @@
     "_id": "92168b794469b8a27b86c3d8766fb59b",
     "category": "服饰",
     "description": "经典廓形，防泼水面料，秋冬通勤必备。",
-    "image": "https://picsum.photos/seed/coat/400/400",
+    "image": "/static/mock/coat-320.webp",
     "images": [
-      "https://picsum.photos/seed/coat1/750/750",
-      "https://picsum.photos/seed/coat2/750/750",
-      "https://picsum.photos/seed/coat3/750/750"
+      "/static/mock/coat-320.webp"
     ],
     "name": "中长款双排扣风衣",
     "originalPrice": 699,
@@ -629,11 +601,9 @@
     "_id": "460d7a96b61247604a24b3da239bd8bf",
     "category": "服饰",
     "description": "免烫工艺，立体剪裁，商务休闲两相宜。",
-    "image": "https://picsum.photos/seed/shirt/400/400",
+    "image": "/static/mock/shirt-320.webp",
     "images": [
-      "https://picsum.photos/seed/shirt1/750/750",
-      "https://picsum.photos/seed/shirt2/750/750",
-      "https://picsum.photos/seed/shirt3/750/750"
+      "/static/mock/shirt-320.webp"
     ],
     "name": "商务免烫长袖衬衫",
     "originalPrice": 229,
@@ -691,11 +661,9 @@
     "_id": "34386d2935736f21532c1718f5f605d4",
     "category": "服饰",
     "description": "雪纺面料飘逸透气，收腰设计更显身材。",
-    "image": "https://picsum.photos/seed/dress/400/400",
+    "image": "/static/mock/dress-320.webp",
     "images": [
-      "https://picsum.photos/seed/dress1/750/750",
-      "https://picsum.photos/seed/dress2/750/750",
-      "https://picsum.photos/seed/dress3/750/750"
+      "/static/mock/dress-320.webp"
     ],
     "name": "法式碎花连衣裙",
     "originalPrice": 329,
@@ -745,11 +713,9 @@
     "_id": "69e770ec0deda6f548c7d20e8dc15938",
     "category": "服饰",
     "description": "90% 白鸭绒填充，蓬松保暖，可收纳便携。",
-    "image": "https://picsum.photos/seed/down/400/400",
+    "image": "/static/mock/down-320.webp",
     "images": [
-      "https://picsum.photos/seed/down1/750/750",
-      "https://picsum.photos/seed/down2/750/750",
-      "https://picsum.photos/seed/down3/750/750"
+      "/static/mock/down-320.webp"
     ],
     "name": "轻便白鸭绒羽绒服",
     "originalPrice": 899,
@@ -807,11 +773,9 @@
     "_id": "bf30593ebbe5987bed2ba0a8018ef16e",
     "category": "服饰",
     "description": "澳洲羊毛混纺，亲肤不扎，秋冬打底首选。",
-    "image": "https://picsum.photos/seed/sweater/400/400",
+    "image": "/static/mock/sweater-320.webp",
     "images": [
-      "https://picsum.photos/seed/sweater1/750/750",
-      "https://picsum.photos/seed/sweater2/750/750",
-      "https://picsum.photos/seed/sweater3/750/750"
+      "/static/mock/sweater-320.webp"
     ],
     "name": "羊毛混纺圆领毛衣",
     "originalPrice": 329,
@@ -861,11 +825,9 @@
     "_id": "8a5d7078b36e99aa20790b1fa7bc2af3",
     "category": "服饰",
     "description": "梭织面料，抽绳束脚，通勤运动两穿。",
-    "image": "https://picsum.photos/seed/jogger/400/400",
+    "image": "/static/mock/jogger-320.webp",
     "images": [
-      "https://picsum.photos/seed/jogger1/750/750",
-      "https://picsum.photos/seed/jogger2/750/750",
-      "https://picsum.photos/seed/jogger3/750/750"
+      "/static/mock/jogger-320.webp"
     ],
     "name": "束脚休闲运动裤",
     "originalPrice": 169,
@@ -915,11 +877,9 @@
     "_id": "b81fcfae491bd25344b8783f71c9f3cc",
     "category": "食品",
     "description": "6种坚果果干科学配比，独立小包锁鲜便携。",
-    "image": "https://picsum.photos/seed/nuts/400/400",
+    "image": "/static/mock/nuts-320.webp",
     "images": [
-      "https://picsum.photos/seed/nuts1/750/750",
-      "https://picsum.photos/seed/nuts2/750/750",
-      "https://picsum.photos/seed/nuts3/750/750"
+      "/static/mock/nuts-320.webp"
     ],
     "name": "每日坚果混合装 30包",
     "originalPrice": 139,
@@ -948,11 +908,9 @@
     "_id": "569ca893574d09294384d28b90298d0a",
     "category": "食品",
     "description": "精品阿拉比卡豆，-40℃ 冻干，3秒速溶。",
-    "image": "https://picsum.photos/seed/coffee/400/400",
+    "image": "/static/mock/coffee-320.webp",
     "images": [
-      "https://picsum.photos/seed/coffee1/750/750",
-      "https://picsum.photos/seed/coffee2/750/750",
-      "https://picsum.photos/seed/coffee3/750/750"
+      "/static/mock/coffee-320.webp"
     ],
     "name": "冷萃冻干即溶咖啡粉",
     "originalPrice": 129,
@@ -985,11 +943,9 @@
     "_id": "121a97fe982d2bbb65f0405194711f4a",
     "category": "食品",
     "description": "秘鲁可可豆，入口微苦回甘，低糖健康。",
-    "image": "https://picsum.photos/seed/chocolate/400/400",
+    "image": "/static/mock/chocolate-320.webp",
     "images": [
-      "https://picsum.photos/seed/chocolate1/750/750",
-      "https://picsum.photos/seed/chocolate2/750/750",
-      "https://picsum.photos/seed/chocolate3/750/750"
+      "/static/mock/chocolate-320.webp"
     ],
     "name": "70% 黑巧克力礼盒",
     "originalPrice": 99,
@@ -1018,11 +974,9 @@
     "_id": "db3b7059be516ecd03418d0a9ad5ed3b",
     "category": "食品",
     "description": "精选草原黄牛后腿肉，传统风干越嚼越香。",
-    "image": "https://picsum.photos/seed/beefjerky/400/400",
+    "image": "/static/mock/beefjerky-320.webp",
     "images": [
-      "https://picsum.photos/seed/beefjerky1/750/750",
-      "https://picsum.photos/seed/beefjerky2/750/750",
-      "https://picsum.photos/seed/beefjerky3/750/750"
+      "/static/mock/beefjerky-320.webp"
     ],
     "name": "内蒙古风干手撕牛肉干",
     "originalPrice": 89,
@@ -1055,11 +1009,9 @@
     "_id": "aaebce97c57f536ae549622a72d2cd74",
     "category": "食品",
     "description": "低温烘焙燕麦+冻干水果，即食冲饮两相宜。",
-    "image": "https://picsum.photos/seed/oatmeal/400/400",
+    "image": "/static/mock/oatmeal-320.webp",
     "images": [
-      "https://picsum.photos/seed/oatmeal1/750/750",
-      "https://picsum.photos/seed/oatmeal2/750/750",
-      "https://picsum.photos/seed/oatmeal3/750/750"
+      "/static/mock/oatmeal-320.webp"
     ],
     "name": "即食水果燕麦片 1kg",
     "originalPrice": 59,
@@ -1092,11 +1044,9 @@
     "_id": "c0fb396fbb10e499b856a72eadb9291c",
     "category": "食品",
     "description": "西湖核心产区，明前嫩芽，豆香鲜爽回甘。",
-    "image": "https://picsum.photos/seed/tea/400/400",
+    "image": "/static/mock/tea-320.webp",
     "images": [
-      "https://picsum.photos/seed/tea1/750/750",
-      "https://picsum.photos/seed/tea2/750/750",
-      "https://picsum.photos/seed/tea3/750/750"
+      "/static/mock/tea-320.webp"
     ],
     "name": "明前龙井绿茶礼盒 250g",
     "originalPrice": 268,
@@ -1125,11 +1075,9 @@
     "_id": "8de7a77f0df2ff86fef619cce44d3d05",
     "category": "食品",
     "description": "新西兰进口黄油，酥松掉渣，下午茶点心。",
-    "image": "https://picsum.photos/seed/cookie/400/400",
+    "image": "/static/mock/cookie-320.webp",
     "images": [
-      "https://picsum.photos/seed/cookie1/750/750",
-      "https://picsum.photos/seed/cookie2/750/750",
-      "https://picsum.photos/seed/cookie3/750/750"
+      "/static/mock/cookie-320.webp"
     ],
     "name": "黄油曲奇饼干 铁盒装",
     "originalPrice": 79,
@@ -1162,11 +1110,9 @@
     "_id": "9906b233a992b72e346756d115abc017",
     "category": "食品",
     "description": "芒果干、草莓干等 8 种果干，真空冻干保留营养。",
-    "image": "https://picsum.photos/seed/fruit/400/400",
+    "image": "/static/mock/fruit-320.webp",
     "images": [
-      "https://picsum.photos/seed/fruit1/750/750",
-      "https://picsum.photos/seed/fruit2/750/750",
-      "https://picsum.photos/seed/fruit3/750/750"
+      "/static/mock/fruit-320.webp"
     ],
     "name": "综合水果干大礼包",
     "originalPrice": 69,
@@ -1199,11 +1145,9 @@
     "_id": "97d54e13a13b86279ad6438e0933d285",
     "category": "食品",
     "description": "酸笋+螺蛳汤底，Q弹米粉，正宗柳州风味。",
-    "image": "https://picsum.photos/seed/luosifen/400/400",
+    "image": "/static/mock/luosifen-320.webp",
     "images": [
-      "https://picsum.photos/seed/luosifen1/750/750",
-      "https://picsum.photos/seed/luosifen2/750/750",
-      "https://picsum.photos/seed/luosifen3/750/750"
+      "/static/mock/luosifen-320.webp"
     ],
     "name": "柳州螺蛳粉 5袋装",
     "originalPrice": 69,
@@ -1236,11 +1180,9 @@
     "_id": "d9096d338429093f45364cccdcc9e9b0",
     "category": "家居",
     "description": "国AA级照度，无频闪无蓝光危害，多档色温调节。",
-    "image": "https://picsum.photos/seed/lamp2/400/400",
+    "image": "/static/mock/lamp2-320.webp",
     "images": [
-      "https://picsum.photos/seed/lamp21/750/750",
-      "https://picsum.photos/seed/lamp22/750/750",
-      "https://picsum.photos/seed/lamp23/750/750"
+      "/static/mock/lamp2-320.webp"
     ],
     "name": "全光谱护眼读写台灯",
     "originalPrice": 299,
@@ -1269,11 +1211,9 @@
     "_id": "f61cea6c556cf152fe28c062a9d09aa1",
     "category": "家居",
     "description": "新疆长绒棉 100 支，缎纹工艺，裸睡级亲肤。",
-    "image": "https://picsum.photos/seed/bedsheet/400/400",
+    "image": "/static/mock/bedsheet-320.webp",
     "images": [
-      "https://picsum.photos/seed/bedsheet1/750/750",
-      "https://picsum.photos/seed/bedsheet2/750/750",
-      "https://picsum.photos/seed/bedsheet3/750/750"
+      "/static/mock/bedsheet-320.webp"
     ],
     "name": "100支长绒棉四件套",
     "originalPrice": 699,
@@ -1319,11 +1259,9 @@
     "_id": "f80ffa7b7884cf0806bc8be85c398b12",
     "category": "家居",
     "description": "天然植物精油，无火扩香，卧室客厅持久留香。",
-    "image": "https://picsum.photos/seed/aroma/400/400",
+    "image": "/static/mock/aroma-320.webp",
     "images": [
-      "https://picsum.photos/seed/aroma1/750/750",
-      "https://picsum.photos/seed/aroma2/750/750",
-      "https://picsum.photos/seed/aroma3/750/750"
+      "/static/mock/aroma-320.webp"
     ],
     "name": "无火藤条香薰礼盒",
     "originalPrice": 139,
@@ -1356,11 +1294,9 @@
     "_id": "8b1288068ee576b4253bf55c3df3eb14",
     "category": "家居",
     "description": "PP 环保材质，大容量可叠加，四季衣物收纳。",
-    "image": "https://picsum.photos/seed/bin/400/400",
+    "image": "/static/mock/bin-320.webp",
     "images": [
-      "https://picsum.photos/seed/bin1/750/750",
-      "https://picsum.photos/seed/bin2/750/750",
-      "https://picsum.photos/seed/bin3/750/750"
+      "/static/mock/bin-320.webp"
     ],
     "name": "加厚塑料收纳箱 3件套",
     "originalPrice": 119,
@@ -1410,11 +1346,9 @@
     "_id": "5a42bc0e4985b8739264bbf77c3b3e99",
     "category": "家居",
     "description": "316L 医用级内胆，12小时长效保温，一键开盖。",
-    "image": "https://picsum.photos/seed/thermos/400/400",
+    "image": "/static/mock/thermos-320.webp",
     "images": [
-      "https://picsum.photos/seed/thermos1/750/750",
-      "https://picsum.photos/seed/thermos2/750/750",
-      "https://picsum.photos/seed/thermos3/750/750"
+      "/static/mock/thermos-320.webp"
     ],
     "name": "316不锈钢保温杯",
     "originalPrice": 159,
@@ -1460,11 +1394,9 @@
     "_id": "6e496e6c534e6fe47f90a904a379225b",
     "category": "家居",
     "description": "加厚雪尼尔，吸水防滑，可机洗易打理。",
-    "image": "https://picsum.photos/seed/rug/400/400",
+    "image": "/static/mock/rug-320.webp",
     "images": [
-      "https://picsum.photos/seed/rug1/750/750",
-      "https://picsum.photos/seed/rug2/750/750",
-      "https://picsum.photos/seed/rug3/750/750"
+      "/static/mock/rug-320.webp"
     ],
     "name": "客厅简约防滑地毯",
     "originalPrice": 229,
@@ -1506,11 +1438,9 @@
     "_id": "31d272b879bac428471e33ef6db245a1",
     "category": "家居",
     "description": "高温釉下彩骨瓷，轻薄透亮，微波炉可用。",
-    "image": "https://picsum.photos/seed/dishes/400/400",
+    "image": "/static/mock/dishes-320.webp",
     "images": [
-      "https://picsum.photos/seed/dishes1/750/750",
-      "https://picsum.photos/seed/dishes2/750/750",
-      "https://picsum.photos/seed/dishes3/750/750"
+      "/static/mock/dishes-320.webp"
     ],
     "name": "骨瓷餐具套装 18头",
     "originalPrice": 399,
@@ -1543,11 +1473,9 @@
     "_id": "0370026f8b938ce967f899a60f08fa04",
     "category": "家居",
     "description": "93% 天然乳胶含量，人体工学波浪曲线，透气孔设计。",
-    "image": "https://picsum.photos/seed/pillow/400/400",
+    "image": "/static/mock/pillow-320.webp",
     "images": [
-      "https://picsum.photos/seed/pillow1/750/750",
-      "https://picsum.photos/seed/pillow2/750/750",
-      "https://picsum.photos/seed/pillow3/750/750"
+      "/static/mock/pillow-320.webp"
     ],
     "name": "泰国乳胶枕 波浪形",
     "originalPrice": 299,
@@ -1580,11 +1508,9 @@
     "_id": "77dabf150142a2dcef6ae3f9e6a5ba29",
     "category": "美妆",
     "description": "顺滑上色不拔干，高级丝绒质地，持妆一整天。",
-    "image": "https://picsum.photos/seed/lipstick/400/400",
+    "image": "/static/mock/lipstick-320.webp",
     "images": [
-      "https://picsum.photos/seed/lipstick1/750/750",
-      "https://picsum.photos/seed/lipstick2/750/750",
-      "https://picsum.photos/seed/lipstick3/750/750"
+      "/static/mock/lipstick-320.webp"
     ],
     "name": "丝绒哑光雾面口红",
     "originalPrice": 199,
@@ -1621,11 +1547,9 @@
     "_id": "bc731c7fe7cdb6baf2fb453d771c9fe4",
     "category": "美妆",
     "description": "三重玻尿酸锁水，轻盈不黏腻，敏感肌可用。",
-    "image": "https://picsum.photos/seed/cream/400/400",
+    "image": "/static/mock/cream-320.webp",
     "images": [
-      "https://picsum.photos/seed/cream1/750/750",
-      "https://picsum.photos/seed/cream2/750/750",
-      "https://picsum.photos/seed/cream3/750/750"
+      "/static/mock/cream-320.webp"
     ],
     "name": "玻尿酸保湿面霜 50g",
     "originalPrice": 239,
@@ -1654,11 +1578,9 @@
     "_id": "adc49b5410ef4f55e39cc379e656947c",
     "category": "美妆",
     "description": "5% 烟酰胺提亮肤色，淡化痘印，水润好吸收。",
-    "image": "https://picsum.photos/seed/serum/400/400",
+    "image": "/static/mock/serum-320.webp",
     "images": [
-      "https://picsum.photos/seed/serum1/750/750",
-      "https://picsum.photos/seed/serum2/750/750",
-      "https://picsum.photos/seed/serum3/750/750"
+      "/static/mock/serum-320.webp"
     ],
     "name": "烟酰胺焕亮精华 30ml",
     "originalPrice": 299,
@@ -1687,11 +1609,9 @@
     "_id": "11a64fe02b472eac38505b8c26ca9e06",
     "category": "美妆",
     "description": "高倍防护不闷痘，水感质地秒成膜，妆前打底友好。",
-    "image": "https://picsum.photos/seed/sunscreen/400/400",
+    "image": "/static/mock/sunscreen-320.webp",
     "images": [
-      "https://picsum.photos/seed/sunscreen1/750/750",
-      "https://picsum.photos/seed/sunscreen2/750/750",
-      "https://picsum.photos/seed/sunscreen3/750/750"
+      "/static/mock/sunscreen-320.webp"
     ],
     "name": "轻薄防晒霜 SPF50+",
     "originalPrice": 159,
@@ -1720,11 +1640,9 @@
     "_id": "1e4ff4df29ba97af01ff145e411a6025",
     "category": "美妆",
     "description": "神经酰胺+玻尿酸双效补水，熬夜急救焕肤。",
-    "image": "https://picsum.photos/seed/mask/400/400",
+    "image": "/static/mock/mask-320.webp",
     "images": [
-      "https://picsum.photos/seed/mask1/750/750",
-      "https://picsum.photos/seed/mask2/750/750",
-      "https://picsum.photos/seed/mask3/750/750"
+      "/static/mock/mask-320.webp"
     ],
     "name": "密集补水面膜 20片",
     "originalPrice": 129,
@@ -1753,11 +1671,9 @@
     "_id": "eea5f5dca0f16d1e32929a358fb9f02e",
     "category": "美妆",
     "description": "前调柑橘茉莉，中调玫瑰鸢尾，清新淡雅不浓郁。",
-    "image": "https://picsum.photos/seed/perfume/400/400",
+    "image": "/static/mock/perfume-320.webp",
     "images": [
-      "https://picsum.photos/seed/perfume1/750/750",
-      "https://picsum.photos/seed/perfume2/750/750",
-      "https://picsum.photos/seed/perfume3/750/750"
+      "/static/mock/perfume-320.webp"
     ],
     "name": "淡香水 EDT 50ml",
     "originalPrice": 499,
@@ -1786,11 +1702,9 @@
     "_id": "86b683997c529aaded5712145326fe16",
     "category": "美妆",
     "description": "弱酸性氨基酸配方，温和清洁不紧绷，敏感肌友好。",
-    "image": "https://picsum.photos/seed/cleanser/400/400",
+    "image": "/static/mock/cleanser-320.webp",
     "images": [
-      "https://picsum.photos/seed/cleanser1/750/750",
-      "https://picsum.photos/seed/cleanser2/750/750",
-      "https://picsum.photos/seed/cleanser3/750/750"
+      "/static/mock/cleanser-320.webp"
     ],
     "name": "氨基酸温和洁面乳",
     "originalPrice": 99,
@@ -1819,11 +1733,9 @@
     "_id": "3c094062d92a0992a20dd46386324eb0",
     "category": "运动",
     "description": "TPE 环保材质，双面防滑，回弹减震无异味。",
-    "image": "https://picsum.photos/seed/yoga/400/400",
+    "image": "/static/mock/yoga-320.webp",
     "images": [
-      "https://picsum.photos/seed/yoga1/750/750",
-      "https://picsum.photos/seed/yoga2/750/750",
-      "https://picsum.photos/seed/yoga3/750/750"
+      "/static/mock/yoga-320.webp"
     ],
     "name": "加厚防滑瑜伽垫",
     "originalPrice": 119,
@@ -1873,11 +1785,9 @@
     "_id": "55cf1073569c81a93c5737d0e7863c0c",
     "category": "运动",
     "description": "全掌回弹中底，透气飞织鞋面，日常路跑轻量之选。",
-    "image": "https://picsum.photos/seed/runshoe/400/400",
+    "image": "/static/mock/runshoe-320.webp",
     "images": [
-      "https://picsum.photos/seed/runshoe1/750/750",
-      "https://picsum.photos/seed/runshoe2/750/750",
-      "https://picsum.photos/seed/runshoe3/750/750"
+      "/static/mock/runshoe-320.webp"
     ],
     "name": "轻量缓震跑步鞋",
     "originalPrice": 429,
@@ -1939,11 +1849,9 @@
     "_id": "03994a39615f1e793389521dae4ac8d4",
     "category": "运动",
     "description": "LED 实时计数，绳长可调，轴承顺滑不缠绕。",
-    "image": "https://picsum.photos/seed/rope/400/400",
+    "image": "/static/mock/rope-320.webp",
     "images": [
-      "https://picsum.photos/seed/rope1/750/750",
-      "https://picsum.photos/seed/rope2/750/750",
-      "https://picsum.photos/seed/rope3/750/750"
+      "/static/mock/rope-320.webp"
     ],
     "name": "智能计数跳绳",
     "originalPrice": 69,
@@ -1972,11 +1880,9 @@
     "_id": "51689458275f8861a5db5174f2873132",
     "category": "运动",
     "description": "快调旋钮结构，1-20kg 自由切换，家用力量训练。",
-    "image": "https://picsum.photos/seed/dumbbell/400/400",
+    "image": "/static/mock/dumbbell-320.webp",
     "images": [
-      "https://picsum.photos/seed/dumbbell1/750/750",
-      "https://picsum.photos/seed/dumbbell2/750/750",
-      "https://picsum.photos/seed/dumbbell3/750/750"
+      "/static/mock/dumbbell-320.webp"
     ],
     "name": "可调节家用哑铃 20kg",
     "originalPrice": 329,
@@ -2005,11 +1911,9 @@
     "_id": "73f878675922cc4f1fa91ed30c6c8395",
     "category": "运动",
     "description": "四重加压包裹，髌骨开孔减压，跑步深蹲防滑。",
-    "image": "https://picsum.photos/seed/knee/400/400",
+    "image": "/static/mock/knee-320.webp",
     "images": [
-      "https://picsum.photos/seed/knee1/750/750",
-      "https://picsum.photos/seed/knee2/750/750",
-      "https://picsum.photos/seed/knee3/750/750"
+      "/static/mock/knee-320.webp"
     ],
     "name": "专业运动护膝 一对装",
     "originalPrice": 99,
@@ -2055,11 +1959,9 @@
     "_id": "31da1d58acb3daf399795185034541b6",
     "category": "运动",
     "description": "高清防雾镀膜，可调鼻桥，成人儿童通用。",
-    "image": "https://picsum.photos/seed/goggle/400/400",
+    "image": "/static/mock/goggle-320.webp",
     "images": [
-      "https://picsum.photos/seed/goggle1/750/750",
-      "https://picsum.photos/seed/goggle2/750/750",
-      "https://picsum.photos/seed/goggle3/750/750"
+      "/static/mock/goggle-320.webp"
     ],
     "name": "防雾高清泳镜",
     "originalPrice": 149,
@@ -2101,11 +2003,9 @@
     "_id": "4a8eb59acb2941325ce8f3e38cfa7c11",
     "category": "运动",
     "description": "全碳素轻量拍身，攻守兼备，附送手胶与拍套。",
-    "image": "https://picsum.photos/seed/racket/400/400",
+    "image": "/static/mock/racket-320.webp",
     "images": [
-      "https://picsum.photos/seed/racket1/750/750",
-      "https://picsum.photos/seed/racket2/750/750",
-      "https://picsum.photos/seed/racket3/750/750"
+      "/static/mock/racket-320.webp"
     ],
     "name": "全碳素羽毛球拍 对拍",
     "originalPrice": 269,
