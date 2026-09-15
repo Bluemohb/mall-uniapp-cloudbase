@@ -46,7 +46,7 @@ export type FavoriteInput = Omit<FavoriteItem, 'addTime'>
 // ============================================================
 
 /** 过滤结构不合法的条目，并按 productId 去重，避免脏数据把页面渲染搞崩 */
-function sanitizeFavorites(raw: unknown): FavoriteItem[] {
+export function sanitizeFavorites(raw: unknown): FavoriteItem[] {
   if (!Array.isArray(raw))
     return []
 
@@ -78,7 +78,7 @@ function sanitizeFavorites(raw: unknown): FavoriteItem[] {
 }
 
 /** 「内容是否变化」的稳定签名（与顺序无关） */
-function signature(items: FavoriteItem[]): string {
+export function signature(items: FavoriteItem[]): string {
   return items
     .map(item => `${item.productId}|${item.addTime}`)
     .sort()
@@ -92,7 +92,7 @@ function signature(items: FavoriteItem[]): string {
  * 合并结果再参与合并也不会产生新条目（购物车那边需要「取较大数量」也是同理）。
  * 同一商品在两处都有时保留较早的 addTime：收藏时间以第一次为准。
  */
-function mergeFavorites(base: FavoriteItem[], extra: FavoriteItem[]): FavoriteItem[] {
+export function mergeFavorites(base: FavoriteItem[], extra: FavoriteItem[]): FavoriteItem[] {
   const map = new Map<string, FavoriteItem>()
 
   for (const item of [...base, ...extra]) {

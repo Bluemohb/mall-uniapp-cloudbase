@@ -30,9 +30,11 @@
  *   node scripts/fetch-mock-images.mjs --clean      # 清空已下载的图
  * ============================================================
  */
+import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')

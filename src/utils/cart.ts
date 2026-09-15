@@ -32,7 +32,7 @@ export interface CartItem {
 // ============================================================
 
 /** 过滤结构不合法的条目，避免脏数据把页面渲染搞崩 */
-function sanitizeItems(raw: unknown): CartItem[] {
+export function sanitizeItems(raw: unknown): CartItem[] {
   if (!Array.isArray(raw))
     return []
 
@@ -53,7 +53,7 @@ function sanitizeItems(raw: unknown): CartItem[] {
 }
 
 /** 「内容是否变化」的稳定签名（与顺序无关） */
-function signature(items: CartItem[]): string {
+export function signature(items: CartItem[]): string {
   return items
     .map(item => `${item.productId}|${item.specs}|${item.quantity}|${item.price}|${item.selected ? 1 : 0}`)
     .sort()
@@ -61,7 +61,7 @@ function signature(items: CartItem[]): string {
 }
 
 /** 合并两批购物车条目：同商品同规格取较大数量（幂等） */
-function mergeCartItems(base: CartItem[], extra: CartItem[]): CartItem[] {
+export function mergeCartItems(base: CartItem[], extra: CartItem[]): CartItem[] {
   const map = new Map<string, CartItem>()
 
   for (const item of [...base, ...extra]) {
