@@ -65,9 +65,6 @@
 │   │   ├── index/                 # 首页
 │   │   │   ├── index.vue
 │   │   │   └── index.json
-│   │   ├── demo/                  # 云开发演示页面
-│   │   │   ├── demo.vue
-│   │   │   └── demo.json
 │   │   ├── login/
 │   │   │   ├── index.vue          # 登录主页面
 │   │   │   ├── phone-login.vue    # 手机验证码登录页面
@@ -83,10 +80,13 @@
 │   ├── main.ts                    # 应用入口文件
 │   ├── pages.json                 # 页面路由配置
 │   └── manifest.json              # 应用配置文件
-├── cloudfunctions/                # 云函数目录
-│   └── hello/                     # 示例云函数
-│       ├── index.js
-│       └── package.json
+├── cloudfunctions/                # 云函数目录（每个子目录需在 cloudbaserc.json 注册才会被部署）
+│   ├── seedProducts/              # 商品种子数据灌入
+│   ├── createOrder/               # 服务端定价下单
+│   ├── updateOrderStatus/         # 订单状态流转
+│   ├── closeExpiredOrders/        # 超时自动关单（定时触发）
+│   ├── wxpayOrder/                # 微信支付统一下单
+│   └── wxpayOrderCallback/        # 微信支付回调
 ├── index.html                     # H5 模板
 ├── vite.config.ts                 # Vite 配置
 ├── tsconfig.json                  # TypeScript 配置
@@ -271,8 +271,8 @@ const db = app.database();
 const result = await db.collection('users').get(); // 查询数据
 await db.collection('users').add({ name: 'test' }); // 添加数据
 
-// 调用云函数
-const funcResult = await app.callFunction({ name: 'hello' });
+// 调用云函数（name 必须是 cloudbaserc.json 里已注册的函数）
+const funcResult = await app.callFunction({ name: 'createOrder', data: { items: [] } });
 
 // 调用云托管
 app.callContainer({
@@ -585,15 +585,27 @@ mock/products_02.json  ──同步──▶  cloudfunctions/seedProducts/produc
 
 ### 同步商品数据走 CloudBase MCP 查询
 
-改完 `mock/products_02.json` 后，把它复制一份到云函数目录：
+改完 `mock/products_02.json` 后，执行一条命令同步到云函数目录：
 
 ```bash
-# Windows PowerShell
-Copy-Item mock/products_02.json cloudfunctions/seedProducts/products.json
-
-# macOS / Linux
-cp mock/products_02.json cloudfunctions/seedProducts/products.json
+pnpm run sync:products
 ```
+
+它做两件事：复制商品数据 + **把本地图片路径映射成云端网络链接**。
+
+> **为什么要换图片**：`mock/products_02.json` 里的图是打包进小程序的本地资源
+> （`/static/mock/phone-320.webp`），而`/static` 这种包内路径在云端数据库和 H5 里根本读不到。
+> 所以同步时会按文件名里的 seed 转成 `https://picsum.photos/seed/phone/400/400`
+> （轮播图固定 3 张 `phone1/2/3`）。商品实体（_id、名称、价格、库存、规格）两边完全一致，
+> 只有图片 URL 不同——**单一数据源照样成立，但云端永远是网络图**。
+
+比手工 `Copy-Item` 多了三道保险：
+
+- **内容相同就不写盘**，不会产生无意义的改动（避免误提交 / 误触发部署）
+- **`--check` 可校验一致性**（`pnpm run check:products`），不一致时退出码 1，已并入 `pnpm run check`，忘同步会在自检阶段直接失败
+- **空数据保护**：源被 `pnpm run mock:purge` 清成 `[]` 时默认拒绝覆盖目标，防止把云端种子数据清空（确需覆盖加 `-- --force`）
+
+两个生产构建脚本（`build:h5` / `build:mp-weixin`）已前置该同步，不需要手动记着跑。
 
 ### 部署并触发写入
 
@@ -1040,8 +1052,11 @@ tcb functions:deploy wxpayOrderCallback
 可以使用 CloudBase CLI 或 MCP 工具部署云函数：
 
 ```bash
-# 使用 CloudBase CLI
-tcb functions:deploy hello
+# 使用 CloudBase CLI（部署单个函数，名称需在 cloudbaserc.json 中注册）
+tcb functions:deploy seedProducts
+
+# 部署全部已注册函数
+tcb functions:deploy
 ```
 
 ### 部署到云开发静态网站托管（H5版本）

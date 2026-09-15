@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import { signInWithOtp } from '../../utils/cloudbase'
+import { getErrorMessage, reportError } from '../../utils/error'
 
 // 响应式数据
 const email = ref('')
@@ -47,12 +48,8 @@ async function getVerificationCode() {
     // 开始倒计时
     startCountdown()
   }
-  catch (error: any) {
-    console.error('获取验证码失败:', error)
-    uni.showToast({
-      title: error.message || '获取验证码失败',
-      icon: 'none',
-    })
+  catch (error) {
+    reportError('获取验证码', error, { toast: getErrorMessage(error, '获取验证码失败') })
   }
   finally {
     loading.value = false
@@ -103,12 +100,8 @@ async function handleLogin() {
       })
     }, 1000)
   }
-  catch (error: any) {
-    console.error('登录失败:', error)
-    uni.showToast({
-      title: error.message || '登录失败',
-      icon: 'none',
-    })
+  catch (error) {
+    reportError('邮箱验证码登录', error, { toast: getErrorMessage(error, '登录失败') })
   }
   finally {
     loading.value = false

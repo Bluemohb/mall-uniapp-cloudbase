@@ -19,6 +19,8 @@ import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
 import { THEME } from '@/theme'
+import { CACHE_KEYS, getCache, setCache } from '@/utils/cache'
+import { reportError } from '@/utils/error'
 
 // 商品卡片公共组件：本项目的 easycom 自动扫描未生效（编译产物里组件未被注册），
 // 必须显式引入，由 <script setup> 自动注册到本页面
@@ -76,6 +78,9 @@ const categories: Category[] = [
 // 数据加载
 // ============================================================
 
+/** 首页推荐缓存有效期：5 分钟（下单成功后会主动失效，见 order-confirm.vue） */
+const RECOMMEND_TTL = 5 * 60 * 1000
+
 /**
  * 查询热卖推荐商品（按销量倒序取前6件）
  * orderBy 指定不存在的字段时云端也能执行，但排序不稳定，
@@ -95,6 +100,7 @@ async function fetchRecommend() {
       .limit(6)
       .get()
     recommendList.value = (res.data || []) as Product[]
+    setCache(CACHE_KEYS.homeRecommend, recommendList.value, RECOMMEND_TTL)
   }
   catch (error) {
     console.warn('按销量查询失败，回退按时间排序:', error)
@@ -105,11 +111,34 @@ async function fetchRecommend() {
         .limit(6)
         .get()
       recommendList.value = (res.data || []) as Product[]
+      setCache(CACHE_KEYS.homeRecommend, recommendList.value, RECOMMEND_TTL)
     }
     catch (e) {
-      console.error('加载推荐商品失败:', e)
+      reportError('加载推荐商品', e, { toast: '加载推荐失败' })
     }
   }
+}
+
+/**
+ * 回到首页时的推荐加载策略
+ *
+ * 【为什么不再无条件打网络】
+ * 首页是 tabBar 页，onShow 在每次切 tab 时都会触发。原来每次都发一次
+ * 数据库查询，用户在「首页 ⇄ 商品 ⇄ 购物车」之间来回切就会反复打网络，
+ * 而推荐位的数据（销量/价格）几分钟内几乎不会变。
+ *
+ * 【现在的策略】
+ * 命中未过期缓存 → 直接渲染，零请求；未命中/已过期 → 回源并写缓存。
+ * 时效由 RECOMMEND_TTL 控制；下单成功会主动 removeCache，保证买了之后
+ * 回首页能看到最新销量，不会读到脏数据。
+ */
+function loadRecommend() {
+  const cached = getCache<Product[]>(CACHE_KEYS.homeRecommend)
+  if (cached) {
+    recommendList.value = cached
+    return
+  }
+  fetchRecommend()
 }
 
 // ============================================================
@@ -142,8 +171,8 @@ function goDetail(id: string) {
 // ============================================================
 
 onShow(() => {
-  // 每次回到首页都刷新推荐（比如下单后库存/销量可能变化）
-  fetchRecommend()
+  // 优先读缓存，未命中/已过期才回源（详见 loadRecommend 注释）
+  loadRecommend()
 })
 </script>
 

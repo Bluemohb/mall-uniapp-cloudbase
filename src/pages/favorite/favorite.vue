@@ -125,6 +125,7 @@ import {
 } from '@/utils/favorite'
 import type { FavoriteItem } from '@/utils/favorite'
 import Skeleton from '@/components/skeleton/skeleton.vue'
+import { reportError } from '@/utils/error'
 
 // ============================================================
 // 响应式数据
@@ -161,7 +162,8 @@ async function loadFavorites() {
     await syncFavoritesOnStartup()
   }
   catch (error) {
-    console.warn('同步收藏失败，使用本地镜像:', error)
+    // 静默降级：同步失败仍可用本地镜像继续展示，不打断用户
+    reportError('同步收藏', error, { toast: false, level: 'warn' })
   }
 
   favoriteList.value = readFavorites()

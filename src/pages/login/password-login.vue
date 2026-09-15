@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { signInWithPassword } from '../../utils/cloudbase'
+import { getErrorMessage, reportError } from '../../utils/error'
 
 // 响应式数据
 const username = ref('')
@@ -98,18 +99,9 @@ async function handleLogin() {
       })
     }, 1500)
   }
-  catch (error: any) {
-    console.error('登录失败:', error)
-
-    // 显示友好的错误信息
-    let errorMessage = '登录失败'
-    if (error.message) {
-      errorMessage = error.message
-    }
-
-    uni.showToast({
-      title: errorMessage,
-      icon: 'none',
+  catch (error) {
+    reportError('密码登录', error, {
+      toast: getErrorMessage(error, '登录失败'),
       duration: 3000,
     })
   }

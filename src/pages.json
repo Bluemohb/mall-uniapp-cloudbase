@@ -16,14 +16,6 @@
       }
     },
     {
-      "path": "pages/demo/demo",
-      "style": {
-        "navigationBarTitleText": "云开发演示",
-        "navigationBarBackgroundColor": "#007aff",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/login/index",
       "style": {
         "navigationBarTitleText": "选择登录方式",

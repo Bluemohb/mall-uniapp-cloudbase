@@ -98,6 +98,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { app, getUid } from '@/utils/cloudbase'
 import { CACHE_KEYS, removeCache } from '@/utils/cache'
 import { THEME } from '@/theme'
+import { reportError } from '@/utils/error'
 
 // ============================================================
 // 类型定义
@@ -195,8 +196,7 @@ async function loadAddress(id: string) {
       regionLabel.value = `${form.province}${form.city}${form.district}`
     }
   } catch (error) {
-    console.error('加载地址失败:', error)
-    uni.showToast({ title: '加载地址失败', icon: 'none' })
+    reportError('加载地址', error, { toast: '加载地址失败' })
   }
 }
 
@@ -260,8 +260,8 @@ async function onSave() {
     try {
       uid = await getUid()
     }
-    catch {
-      uni.showToast({ title: '登录状态异常，请稍后重试', icon: 'none' })
+    catch (error) {
+      reportError('保存地址-获取用户标识', error, { toast: '登录状态异常，请稍后重试' })
       return
     }
 
@@ -312,8 +312,7 @@ async function onSave() {
       uni.navigateBack()
     }, 800)
   } catch (err) {
-    console.error('保存地址失败:', err)
-    uni.showToast({ title: '保存失败，请重试', icon: 'none' })
+    reportError('保存地址', err, { toast: '保存失败，请重试' })
   } finally {
     saving.value = false
   }
@@ -342,7 +341,8 @@ async function clearOtherDefaults(userId: string, excludeId?: string) {
       await Promise.all(updates)
     }
   } catch (err) {
-    console.warn('清除其他默认地址失败:', err)
+    // 静默降级：清不掉旧默认地址最多是出现两个默认，不影响本次保存
+    reportError('清除其他默认地址', err, { toast: false, level: 'warn' })
   }
 }
 </script>

@@ -108,12 +108,13 @@ import { app, getUid } from '@/utils/cloudbase'
 import { createOrderViaCloud, generateOrderNo } from '@/utils/order'
 import type { CreateOrderPayload, OrderAddress, OrderItem, OrderStatus } from '@/utils/order'
 import { calcTotalCents, formatCents, formatMoney, toYuan } from '@/utils/money'
-import { CACHE_KEYS, getCache, setCache } from '@/utils/cache'
+import { CACHE_KEYS, getCache, removeCache, setCache } from '@/utils/cache'
 import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
 import { MOCK_USER_ID, mockCreateOrder } from '@/utils/order-mock'
+import { getErrorMessage, reportError } from '@/utils/error'
 
 /** 本页路由参数 */
 interface ConfirmPageQuery {
@@ -244,7 +245,8 @@ async function loadAddress() {
     setCache(CACHE_KEYS.defaultAddress, defaultAddress)
     selectedAddress.value = defaultAddress
   } catch (error) {
-    console.error('加载默认地址失败:', error)
+    // 静默降级：读不到默认地址就让用户手动选，不弹 toast
+    reportError('加载默认地址', error, { toast: false })
     selectedAddress.value = null
   }
 }
@@ -332,6 +334,8 @@ async function submitOrder() {
     uni.removeStorageSync('checkout_items')
     // 删除"已选地址"的临时数据
     uni.removeStorageSync('selected_address')
+    // 下单会改变库存/销量，主动失效首页推荐缓存，避免回到首页读到旧数据
+    removeCache(CACHE_KEYS.homeRecommend)
 
     uni.hideLoading()
     uni.showToast({ title: '订单提交成功', icon: 'success' })
@@ -343,9 +347,8 @@ async function submitOrder() {
     }, 600)
   } catch (error) {
     uni.hideLoading()
-    console.error('提交订单失败:', error)
-    const message = error instanceof Error ? error.message : '提交失败，请重试'
-    uni.showToast({ title: message, icon: 'none' })
+    // 云函数会带上业务原因（如库存不足），优先展示它的文案
+    reportError('提交订单', error, { toast: getErrorMessage(error, '提交失败，请重试') })
   } finally {
     submitting.value = false
   }

@@ -92,6 +92,7 @@ import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { app, getUid } from '@/utils/cloudbase'
 import { CACHE_KEYS, removeCache } from '@/utils/cache'
+import { reportError } from '@/utils/error'
 
 // ============================================================
 // 类型定义
@@ -159,8 +160,7 @@ async function fetchAddresses() {
 
     addressList.value = (data as Address[]) || []
   } catch (error) {
-    console.error('获取地址列表失败:', error)
-    uni.showToast({ title: '加载地址失败', icon: 'none' })
+    reportError('获取地址列表', error, { toast: '加载地址失败' })
   } finally {
     loading.value = false
   }
@@ -222,8 +222,7 @@ async function setDefault(id: string) {
     fetchAddresses()
   }
   catch (error) {
-    console.error('设置默认地址失败:', error)
-    uni.showToast({ title: '操作失败', icon: 'none' })
+    reportError('设置默认地址', error, { toast: '操作失败' })
   }
 }
 
@@ -241,8 +240,7 @@ function onDelete(id: string, index: number) {
           uni.showToast({ title: '已删除', icon: 'success' })
         }
         catch (error) {
-          console.error('删除地址失败:', error)
-          uni.showToast({ title: '删除失败', icon: 'none' })
+          reportError('删除地址', error, { toast: '删除失败' })
         }
       }
     },

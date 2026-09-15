@@ -141,6 +141,7 @@ import { formatCents, formatMoney, calcTotalCents } from '@/utils/money'
 import { readCart, syncCartOnStartup, writeCart } from '@/utils/cart'
 import type { CartItem } from '@/utils/cart'
 import { THEME } from '@/theme'
+import { reportError } from '@/utils/error'
 
 // ============================================================
 // 响应式数据
@@ -181,7 +182,7 @@ async function loadCartData() {
     cartList.value = readCart()
   }
   catch (error) {
-    console.error('加载购物车数据失败:', error)
+    reportError('加载购物车数据', error, { toast: '加载购物车失败' })
     cartList.value = []
   }
 }

@@ -15,6 +15,8 @@
 export const CACHE_KEYS = {
   /** 订单确认页使用的「默认地址」缓存（带过期时间） */
   defaultAddress: 'default_address',
+  /** 首页热卖推荐（tabBar 页 onShow 频繁触发，避免每次切 tab 都打网络） */
+  homeRecommend: 'home_recommend',
 } as const
 
 /** 默认有效期：1 天（毫秒） */

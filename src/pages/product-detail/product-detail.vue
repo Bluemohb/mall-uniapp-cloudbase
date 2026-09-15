@@ -36,6 +36,7 @@ import { isFavorite, syncFavoritesOnStartup, toggleFavorite as toggleFavoriteSto
 // 【重要】uni-app 页面生命周期钩子，必须从 @dcloudio/uni-app 导入
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { THEME } from '@/theme'
+import { reportError } from '@/utils/error'
 
 // ============================================================
 // 第2部分：数据类型定义
@@ -266,8 +267,7 @@ async function fetchProductDetail(id: string) {
       uni.showToast({ title: '商品不存在', icon: 'error' })
     }
   } catch (error) {
-    console.error('❌ 查询商品详情失败:', error)
-    uni.showToast({ title: '加载失败', icon: 'error' })
+    reportError('查询商品详情', error, { toast: '加载失败' })
   } finally {
     isLoading.value = false
   }
@@ -409,8 +409,7 @@ async function addToCart() {
     // 重置数量
     quantity.value = 1
   } catch (error) {
-    console.error('加入购物车失败:', error)
-    uni.showToast({ title: '操作失败', icon: 'error' })
+    reportError('加入购物车', error, { toast: '加入购物车失败' })
   } finally {
     isAddingToCart.value = false
   }

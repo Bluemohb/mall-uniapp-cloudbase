@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { auth, isMpWeixin, login, signInWithOpenId, signInWithPhoneAuth } from '../../utils/cloudbase'
+import { getErrorMessage, reportError } from '../../utils/error'
 
 // 已登录（正式微信用户）不应再看到"选择登录方式"页：直接提示并返回
 onShow(async () => {
@@ -47,12 +48,9 @@ async function anonymousLogin() {
       })
     }, 1000)
   }
-  catch (error: any) {
+  catch (error) {
     uni.hideLoading()
-    uni.showToast({
-      title: error.message || '登录失败',
-      icon: 'none',
-    })
+    reportError('游客登录', error, { toast: getErrorMessage(error, '登录失败') })
   }
 }
 
@@ -92,14 +90,11 @@ async function openIdLogin() {
       })
     }, 1000)
   }
-  catch (error: any) {
+  catch (error) {
     uni.hideLoading()
-    console.error('微信 OpenID 登录失败:', error)
-    // 优先展示 SDK 真实错误（error_description），便于定位
-    const msg = error?.error_description || error?.message || '登录失败，请重试'
-    uni.showToast({
-      title: msg.slice(0, 30),
-      icon: 'none',
+    // 优先展示 SDK 真实错误（error_description），便于定位；toast 文案长度有限需截断
+    reportError('微信 OpenID 登录', error, {
+      toast: getErrorMessage(error, '登录失败，请重试').slice(0, 30),
     })
   }
 }
@@ -108,11 +103,7 @@ async function openIdLogin() {
 async function handleGetPhoneNumber(event: any) {
   // console.log("event:", event)
   if (!event.detail.code) {
-    console.error('获取手机号失败:', event.detail.errMsg)
-    uni.showToast({
-      title: '获取手机号失败',
-      icon: 'none',
-    })
+    reportError('微信手机号授权', event.detail.errMsg, { toast: '获取手机号失败' })
     return
   }
   console.log('获取到动态令牌(code):', event.detail.code)
@@ -135,13 +126,8 @@ async function handleGetPhoneNumber(event: any) {
       })
     }, 1000)
   }
-  catch (error: any) {
-    // 处理登录失败
-    console.error('手机号授权登录失败:', error)
-    uni.showToast({
-      title: error.message || '登录失败',
-      icon: 'none',
-    })
+  catch (error) {
+    reportError('手机号授权登录', error, { toast: getErrorMessage(error, '登录失败') })
   }
   finally {
     uni.hideLoading()

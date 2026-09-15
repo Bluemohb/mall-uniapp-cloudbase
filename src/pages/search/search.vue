@@ -21,6 +21,7 @@ import { ref, computed } from 'vue'
 import { onLoad, onReachBottom } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
 import Skeleton from '@/components/skeleton/skeleton.vue'
+import { reportError } from '@/utils/error'
 
 // Mock 数据层：由全局开关 USE_MOCK 控制（见 src/utils/mock.ts）
 import { USE_MOCK, mockSearchProducts } from '@/utils/mock'
@@ -222,8 +223,7 @@ async function fetchSearch(isRefresh = false) {
     }
   }
   catch (error) {
-    console.error('搜索失败:', error)
-    uni.showToast({ title: '搜索失败，请稍后重试', icon: 'none' })
+    reportError('搜索商品', error, { toast: '搜索失败，请稍后重试' })
   }
   finally {
     isLoading.value = false

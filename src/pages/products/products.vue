@@ -50,6 +50,7 @@ import { USE_MOCK, mockQueryProducts } from '@/utils/mock'
 // 必须显式引入，由 <script setup> 自动注册到本页面
 import GoodsCard from '@/components/goods-card/goods-card.vue'
 import Skeleton from '@/components/skeleton/skeleton.vue'
+import { reportError } from '@/utils/error'
 
 // ============================================================
 // 第2部分：定义数据类型（TypeScript 接口）
@@ -220,14 +221,8 @@ async function fetchProducts(isRefresh = false) {
       currentPage.value++ // 页码+1，下次查询下一页
     }
   } catch (error) {
-    // 捕获错误
-    console.error('❌ 查询商品失败:', error)
-
-    // 给用户提示
-    uni.showToast({
-      title: '加载商品失败',
-      icon: 'error',
-    })
+    // 打日志 + 统一用纯文字 toast（icon:'error' 会挤占中文文案宽度）
+    reportError('查询商品', error, { toast: '加载商品失败' })
   } finally {
     // 无论成功还是失败，都要关闭加载状态
     isLoading.value = false

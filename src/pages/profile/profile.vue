@@ -15,6 +15,7 @@ import { computed, onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { auth, ensureLogin } from '../../utils/cloudbase'
 import { getWechatProfile } from '../../utils/index'
+import { reportError } from '../../utils/error'
 
 const userInfo = ref<any>(null)
 const isAnonymous = ref(false)
@@ -62,7 +63,9 @@ async function getUserInfo() {
     }
   }
   catch (error) {
-    console.error('获取用户信息失败:', error)
+    // 静默降级：本页是 tabBar 页，未登录也会走到这里，
+    // 弹 toast 会变成「一进『我的』就报错」，页面本身已能显示未登录态
+    reportError('获取用户信息', error, { toast: false })
     userInfo.value = null
     isAnonymous.value = false
   }

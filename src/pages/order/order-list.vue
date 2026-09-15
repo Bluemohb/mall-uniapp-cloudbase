@@ -175,6 +175,7 @@ import { cancelOrderById, cancelOrdersByIds, payOrderById } from '@/utils/order-
 import { USE_ORDER_MOCK } from '@/utils/mock'
 import { mockQueryOrders } from '@/utils/order-mock'
 import Skeleton from '@/components/skeleton/skeleton.vue'
+import { getErrorMessage, reportError } from '@/utils/error'
 
 // ============================================================
 // 状态筛选 tab 定义
@@ -321,8 +322,7 @@ async function fetchOrders() {
     uid = await getUid()
   }
   catch (error) {
-    console.error('获取用户标识失败:', error)
-    uni.showToast({ title: '登录失败，请稍后重试', icon: 'none' })
+    reportError('获取用户标识', error, { toast: '登录失败，请稍后重试' })
     return
   }
 
@@ -357,8 +357,7 @@ async function fetchOrders() {
       orders.value = [...orders.value, ...newItems]
     }
   } catch (error) {
-    console.error('获取订单列表失败:', error)
-    uni.showToast({ title: '加载订单失败', icon: 'none' })
+    reportError('获取订单列表', error, { toast: '加载订单失败' })
   }
 }
 
@@ -425,7 +424,8 @@ async function fetchCandidatesForSearch(): Promise<Order[]> {
     uid = await getUid()
   }
   catch (error) {
-    console.error('获取用户标识失败:', error)
+    // 这里要把错误抛给调用方统一处理，避免同一个失败弹两次 toast
+    reportError('获取用户标识', error, { toast: false })
     throw new Error('登录失败，请稍后重试')
   }
 
@@ -465,11 +465,7 @@ async function fetchSearchResult() {
     orders.value = candidates.filter(o => matchKeyword(o, kw))
   }
   catch (error) {
-    console.error('搜索订单失败:', error)
-    uni.showToast({
-      title: error instanceof Error ? error.message : '搜索失败',
-      icon: 'none',
-    })
+    reportError('搜索订单', error, { toast: getErrorMessage(error, '搜索失败') })
   }
 }
 

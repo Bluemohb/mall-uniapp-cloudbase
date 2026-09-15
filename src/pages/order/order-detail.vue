@@ -162,6 +162,7 @@ import {
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
 import { mockGetOrderById } from '@/utils/order-mock'
+import { reportError } from '@/utils/error'
 
 /** 订单详情页路由参数 */
 interface OrderDetailQuery {
@@ -276,8 +277,7 @@ async function fetchOrderDetail(id: string) {
       .get()
     order.value = (data && data[0]) as Order || null
   } catch (error) {
-    console.error('查询订单详情失败:', error)
-    uni.showToast({ title: '加载失败', icon: 'none' })
+    reportError('查询订单详情', error, { toast: '加载失败' })
   } finally {
     loading.value = false
   }
