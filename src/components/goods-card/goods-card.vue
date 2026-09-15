@@ -50,6 +50,7 @@ const originalPriceText = computed(() => {
       class="goods-card__image"
       :src="product.image || '/static/logo.png'"
       mode="aspectFill"
+      lazy-load
     />
     <view class="goods-card__info">
       <text class="goods-card__name">{{ product.name }}</text>

@@ -18,7 +18,10 @@
 <template>
   <view class="favorite-page">
     <!-- ========== 空收藏状态 ========== -->
-    <view v-if="favoriteList.length === 0" class="empty-state">
+    <!-- 首屏数据未到达时显示骨架屏 -->
+    <skeleton v-if="isLoading && favoriteList.length === 0" type="list-row" :count="5" />
+
+    <view v-else-if="favoriteList.length === 0" class="empty-state">
       <view class="empty-icon">❤️</view>
       <text class="empty-text">还没有收藏的商品</text>
       <text class="empty-hint">看到心仪的商品点个收藏，就能在这里找到</text>
@@ -64,6 +67,7 @@
               class="item-image"
               :src="item.image || '/static/logo.png'"
               mode="aspectFill"
+              lazy-load
             />
             <view class="item-info">
               <text class="item-name">{{ item.name }}</text>
@@ -120,6 +124,7 @@ import {
   writeFavorites,
 } from '@/utils/favorite'
 import type { FavoriteItem } from '@/utils/favorite'
+import Skeleton from '@/components/skeleton/skeleton.vue'
 
 // ============================================================
 // 响应式数据
@@ -145,7 +150,11 @@ const isAllSelected = computed(() =>
 // 数据加载
 // ============================================================
 
+/** 收藏列表是否正在加载：首次进入与刷新时用于显示骨架屏 */
+const isLoading = ref(true)
+
 async function loadFavorites() {
+  isLoading.value = true
   try {
     // 启动时已发起合并（App.onLaunch），这里 await 同一个 Promise：
     // 保证「冷启动直接进收藏页」也能读到云端最新收藏，且不重复请求
@@ -160,6 +169,8 @@ async function loadFavorites() {
   // 列表变化后丢弃已不存在的选中项，避免「取消收藏后仍计入已选」
   const alive = new Set(favoriteList.value.map(item => item.productId))
   selectedIds.value = selectedIds.value.filter(id => alive.has(id))
+
+  isLoading.value = false
 }
 
 // ============================================================

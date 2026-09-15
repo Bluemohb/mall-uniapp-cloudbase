@@ -61,6 +61,7 @@
               :src="item.image || '/static/logo.png'"
               class="item-image"
               mode="aspectFill"
+              lazy-load
             />
             <view class="item-info">
               <text class="item-name">{{ item.name }}</text>

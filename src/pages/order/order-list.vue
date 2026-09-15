@@ -62,6 +62,9 @@
         <view v-else class="empty-btn" @click="goShopping">去逛逛</view>
       </view>
 
+      <!-- 首屏数据未到达时显示骨架屏 -->
+      <skeleton v-if="loading && orders.length === 0" type="list-row" :count="4" />
+
       <!-- 订单卡片 -->
       <view
         v-for="order in orders"
@@ -96,6 +99,7 @@
               :src="item.image || '/static/logo.png'"
               class="thumb"
               mode="aspectFill"
+              lazy-load
             />
             <text class="goods-count">共 {{ getTotalQty(order) }} 件</text>
           </view>
@@ -170,6 +174,7 @@ import { cancelOrderById, cancelOrdersByIds, payOrderById } from '@/utils/order-
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
 import { mockQueryOrders } from '@/utils/order-mock'
+import Skeleton from '@/components/skeleton/skeleton.vue'
 
 // ============================================================
 // 状态筛选 tab 定义

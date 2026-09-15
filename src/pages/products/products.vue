@@ -49,6 +49,7 @@ import { USE_MOCK, mockQueryProducts } from '@/utils/mock'
 // 商品卡片公共组件：本项目的 easycom 自动扫描未生效（编译产物里组件未被注册），
 // 必须显式引入，由 <script setup> 自动注册到本页面
 import GoodsCard from '@/components/goods-card/goods-card.vue'
+import Skeleton from '@/components/skeleton/skeleton.vue'
 
 // ============================================================
 // 第2部分：定义数据类型（TypeScript 接口）
@@ -108,6 +109,9 @@ const categoryFilter = ref('')
  * 当不在加载中 且 列表为空时，显示"暂无商品"提示
  */
 const showEmpty = computed(() => !isLoading.value && productList.value.length === 0)
+
+/** 首屏（列表为空且正在加载）显示骨架屏，避免整页白屏 */
+const showSkeleton = computed(() => isLoading.value && productList.value.length === 0)
 
 // ============================================================
 // 第4部分：数据查询方法
@@ -383,7 +387,10 @@ function clearCategory() {
       <text class="category-clear" @click="clearCategory">清除筛选</text>
     </view>
 
-    <view v-if="productList.length > 0" class="product-grid">
+    <!-- 首屏数据未到达时用骨架屏占位；加载更多仍用底部 load-more -->
+    <skeleton v-if="showSkeleton" type="goods-grid" :count="6" />
+
+    <view v-else-if="productList.length > 0" class="product-grid">
       <!--
         商品卡片：公共组件 components/goods-card（已在 script setup 显式引入）
         v-for 循环渲染商品列表；:key 是 Vue 必需的，用于高效更新列表
@@ -402,6 +409,7 @@ function clearCategory() {
       easycom 会自动按需导入，无需手动 import
     -->
     <uni-load-more
+      v-if="!showSkeleton"
       :status="isLoading ? 'loading' : (hasMore ? 'more' : 'noMore')"
     />
 

@@ -20,6 +20,7 @@
 import { ref, computed } from 'vue'
 import { onLoad, onReachBottom } from '@dcloudio/uni-app'
 import { app } from '@/utils/cloudbase'
+import Skeleton from '@/components/skeleton/skeleton.vue'
 
 // Mock 数据层：由全局开关 USE_MOCK 控制（见 src/utils/mock.ts）
 import { USE_MOCK, mockSearchProducts } from '@/utils/mock'
@@ -91,6 +92,9 @@ const hasHistory = computed(() => history.value.length > 0)
 
 /** 是否显示空结果 */
 const showEmpty = computed(() => !isLoading.value && resultList.value.length === 0)
+
+/** 搜索结果未到达时显示骨架屏，避免白屏 */
+const showSkeleton = computed(() => isLoading.value && resultList.value.length === 0)
 
 // ============================================================
 // 搜索历史（本地存储）
@@ -374,7 +378,10 @@ onReachBottom(() => {
         </text>
       </view>
 
-      <view v-if="resultList.length > 0" class="product-grid">
+      <!-- 搜索结果未到达时先显示骨架屏 -->
+      <skeleton v-if="showSkeleton" type="goods-grid" :count="6" />
+
+      <view v-else-if="resultList.length > 0" class="product-grid">
         <view
           v-for="product in resultList"
           :key="product._id"
@@ -385,6 +392,7 @@ onReachBottom(() => {
             class="product-image"
             :src="product.image || '/static/logo.png'"
             mode="aspectFill"
+            lazy-load
           />
           <view class="product-info">
             <text class="product-name">{{ product.name }}</text>
@@ -404,7 +412,7 @@ onReachBottom(() => {
 
       <!-- 加载更多 -->
       <uni-load-more
-        v-if="!showEmpty"
+        v-if="!showEmpty && !showSkeleton"
         :status="isLoading ? 'loading' : (hasMore ? 'more' : 'noMore')"
       />
 

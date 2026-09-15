@@ -45,7 +45,7 @@
     <view class="goods-card">
       <view class="card-title">商品清单</view>
       <view v-for="(item, index) in items" :key="index" class="goods-item">
-        <image :src="item.image || '/static/logo.png'" class="goods-image" mode="aspectFill" />
+        <image :src="item.image || '/static/logo.png'" class="goods-image" mode="aspectFill" lazy-load />
         <view class="goods-info">
           <text class="goods-name">{{ item.name }}</text>
           <text v-if="item.specs" class="goods-specs">{{ item.specs }}</text>
