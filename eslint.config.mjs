@@ -13,6 +13,7 @@ export default uniHelper(
       'src/uni_modules/**',
       'unpackage/**',
       'README.md',
+      '*.md',
     ],
   },
 
