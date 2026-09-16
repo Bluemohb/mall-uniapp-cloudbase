@@ -55,12 +55,19 @@ pnpm install
 
 ### 3. 配置云开发环境
 
-在 `.env` 中填入环境 ID 与 Publishable Key（控制台 → 环境 → API 密钥 可获取）：
+复制 `.env.example` 为 `.env`，填入环境 ID 与 Publishable Key（控制台 → 环境 → API 密钥 可获取）：
 
 ```bash
+cp .env.example .env
+```
+
+```bash
+# .env
 VITE_ENV_ID=your-env-id
 VITE_PUBLISHABLE_KEY=your-publishable-key
 ```
+
+> `.env` 已在 `.gitignore` 中，不会被提交；`.env.development` / `.env.production` 只放数据源开关、不含密钥，随仓库提交。
 
 同时把 `cloudbaserc.json` 的 `envId` 改成同一个环境（云函数部署用）。
 
@@ -228,7 +235,7 @@ H5 / 匿名端调用云函数前，需在控制台「云函数 → 安全规则�
 ## 注意事项
 
 - **改完要重新编译**：`.env`、`mock/products_02.json`、`pages.json`、`manifest.json`、静态资源、新增模块等都属于构建期输入，改完必须重启 dev；新增 `src/utils/**` 模块遇到 `module '...' is not defined` 时，需要删 `dist/dev` 并**完全退出开发者工具再重开**（IDE 缓存了文件快照）。
-- **`.env` 含真实环境 ID 与 Publishable Key**：备份到公开仓库前建议把 `.env` 加入 `.gitignore`，改为提供 `.env.example` 占位。
+- **`.env` 含真实环境 ID 与 Publishable Key**：已被 `.gitignore` 忽略，首次克隆请复制 `.env.example` 为 `.env` 后填写。
 - **定时任务必须部署**：`closeExpiredOrders` 不部署的话，未支付订单会一直占用库存。
 - 微信支付需要企业主体 + 商户凭证；个人主体请保持 `VITE_PAY_MODE=mock`。
 
