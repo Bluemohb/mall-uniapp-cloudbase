@@ -6,6 +6,10 @@
 - 同套代码可编译到支付宝 / 抖音小程序与 App（iOS/Android），见「多端运行与构建」
 - 本项目基于 [CloudBase AI ToolKit](https://github.com/TencentCloudBase/CloudBase-AI-ToolKit) 模板起步，模板原始说明与踩坑记录保留在 [`README-TEMPLATE.md`](./README-TEMPLATE.md)
 
+## 界面预览
+
+![全部页面预览](./docs/images/preview-all.jpg)
+
 ## 功能一览
 
 | 模块 | 能力 |
