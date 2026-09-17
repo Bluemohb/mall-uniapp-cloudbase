@@ -14,9 +14,9 @@
  *  - 云端写操作（创建订单 / 改状态）统一走云函数，服务端做校验
  * ============================================================
  */
-import { app } from './cloudbase'
-import { toCents } from './money'
-import { THEME } from '../theme'
+import { THEME } from '@/theme'
+import { app } from '@/utils/cloudbase'
+import { toCents } from '@/utils/money'
 
 /**
  * 订单状态流转图：
@@ -44,7 +44,7 @@ export const ORDER_STATUS_MAP: Record<OrderStatus, { label: string, color: strin
  * 支付渠道
  *   wxpay：真实微信支付（由云函数 wxpayOrder / wxpayOrderCallback 写入）
  *   mock ：模拟支付（个人主体小程序 / H5 / App；由 updateOrderStatus 云函数
- *          或本地 mock 层写入），见 src/utils/order-actions.ts
+ *          或本地 mock 层写入），见 src/pages/order/order-actions.ts
  */
 export type OrderPayChannel = 'wxpay' | 'mock'
 

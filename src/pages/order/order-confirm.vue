@@ -105,15 +105,15 @@
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { app, getUid } from '@/utils/cloudbase'
-import { createOrderViaCloud, generateOrderNo } from '@/utils/order'
-import type { CreateOrderPayload, OrderAddress, OrderItem, OrderStatus } from '@/utils/order'
+import { createOrderViaCloud, generateOrderNo } from './order'
+import type { CreateOrderPayload, OrderAddress, OrderItem, OrderStatus } from './order'
 import { calcTotalCents, formatCents, formatMoney, toYuan } from '@/utils/money'
 import { CACHE_KEYS, getCache, removeCache, setCache } from '@/utils/cache'
 import { ensureCartUid, readCart, writeCart } from '@/utils/cart'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
-import { MOCK_USER_ID, mockCreateOrder } from '@/utils/order-mock'
+import { MOCK_USER_ID, mockCreateOrder } from './order-mock'
 import { getErrorMessage, reportError } from '@/utils/error'
 
 /** 本页路由参数 */

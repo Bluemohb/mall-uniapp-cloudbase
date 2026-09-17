@@ -18,11 +18,11 @@
   - doc(id).get() 查询单条数据（和商品详情页一样）
   - doc(id).update(data) 更新指定字段
   - 真实微信支付：云函数统一下单 + wx.requestPayment 唤起收银台 + 主动查单确认，
-    全部封装在 src/utils/payment.ts；订单状态最终由服务端回调/查单写入
+    全部封装在 src/pages/order/payment.ts；订单状态最终由服务端回调/查单写入
   - 模拟支付：个人主体小程序开不了微信支付（需企业主体 + 认证），
     在 .env 里配 VITE_PAY_MODE=mock 强制走「弹窗确认」；
     它同样会写入一条 payment 支付流水（channel='mock'），与真实支付结构同构
-  - 支付/取消/发货/收货统一走 src/utils/order-actions.ts：
+  - 支付/取消/发货/收货统一走 src/pages/order/order-actions.ts：
     页面只负责「触发 + 回读」，Mock / 云端与真付 / 模拟的分支都在那一层
   ============================================================
 -->
@@ -144,12 +144,12 @@ import {
   orderAmountCents,
   payChannelLabel,
   type Order,
-} from '@/utils/order'
+} from './order'
 import { formatCents, formatMoney } from '@/utils/money'
 
 // 订单操作统一入口：支付 / 取消 / 发货 / 收货。
 // 内部区分「真实微信支付」与「模拟支付」，两个页面重复的那部分分支也收敛在这里，
-// 页面只负责触发与回读（见 utils/order-actions.ts）
+// 页面只负责触发与回读（见 pages/order/order-actions.ts）
 import {
   canUseWechatPayForOrder,
   cancelOrderById,
@@ -157,11 +157,11 @@ import {
   payOrderById,
   shipOrderById,
   type OrderActionOutcome,
-} from '@/utils/order-actions'
+} from './order-actions'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
-import { mockGetOrderById } from '@/utils/order-mock'
+import { mockGetOrderById } from './order-mock'
 import { reportError } from '@/utils/error'
 
 /** 订单详情页路由参数 */
@@ -183,13 +183,13 @@ const order = ref<Order | null>(null)
 const loading = ref(true)
 
 // 执行中的防重复点击锁不在这里：详情页与列表页要共用同一把锁，
-// 已统一放进 utils/order-actions.ts 的 acting
+// 已统一放进 pages/order/order-actions.ts 的 acting
 
 // ============================================================
 // 计算属性
 // ============================================================
 
-/** 当前状态的展示信息（中文名 + 颜色），取自 utils/order 映射表 */
+/** 当前状态的展示信息（中文名 + 颜色），取自 pages/order/order 映射表 */
 const statusInfo = computed(() =>
   ORDER_STATUS_MAP[order.value?.status || 'pending'],
 )
@@ -289,7 +289,7 @@ async function fetchOrderDetail(id: string) {
 
 // 四个操作是同一个套路，页面这边只做两件事：
 //   1. 调 action：确认弹窗 / Mock 与云端分流 / 真付与模拟分流 / 防重复提交
-//      全在 utils/order-actions.ts 里，两个页面共用同一份实现
+//      全在 pages/order/order-actions.ts 里，两个页面共用同一份实现
 //   2. 用户确认过就回读一次订单：成功要展示新状态；失败也可能是订单刚被定时任务
 //      closeExpiredOrders 超时关单，手里这份数据已经过期。不回读的话，
 //      用户会对着一个假的「待支付」反复点按钮、每次都失败。
@@ -304,7 +304,7 @@ async function reloadIfConfirmed(outcome: OrderActionOutcome) {
 /**
  * 支付（待支付 → 已支付）
  *
- * 走真实微信支付还是模拟支付由 utils/order-actions 决定：
+ * 走真实微信支付还是模拟支付由 pages/order/order-actions 决定：
  *  - canUseWechatPayForOrder() 为真 → 云函数统一下单 + 唤起收银台 + 主动查单确认
  *  - 否则（个人主体小程序 / H5 / App）→ 模拟支付，状态由服务端或本地 mock 层写入
  * 页面不再自己改订单状态，一律以回读结果为准。

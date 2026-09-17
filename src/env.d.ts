@@ -43,7 +43,7 @@ interface ImportMetaEnv {
   /**
    * 支付模式：'mock' = 强制模拟支付（个人主体小程序 / 无商户凭证必配）；
    * 不配置时为 'auto'，环境具备条件就调起真实微信支付。
-   * 见 README「支付模式开关」与 src/utils/payment.ts 的 canUseWechatPay()。
+   * 见 README「支付模式开关」与 src/pages/order/payment.ts 的 canUseWechatPay()。
    */
   readonly VITE_PAY_MODE?: string
 }

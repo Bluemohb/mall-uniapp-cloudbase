@@ -5,7 +5,7 @@ import cloudbase from '@cloudbase/js-sdk'
 cloudbase.useAdapters(adapter, { uni })
 
 // 云开发环境ID，使用时请替换为您的环境ID
-// （导出给 utils/payment.ts 用：微信支付必须走小程序原生 wx.cloud 通道，
+// （导出给 pages/order/payment.ts 用：微信支付必须走小程序原生 wx.cloud 通道，
 //   而 wx.cloud.init 需要显式指定环境ID）
 export const ENV_ID: string = import.meta.env.VITE_ENV_ID || 'your-env-id'
 

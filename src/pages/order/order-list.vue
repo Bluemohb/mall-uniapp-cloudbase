@@ -164,16 +164,16 @@ import {
   orderAmountCents,
   type Order,
   type OrderStatus,
-} from '@/utils/order'
+} from './order'
 import { formatCents } from '@/utils/money'
 
 // 订单操作统一入口：支付 / 取消。
-// 内部区分「真实微信支付」与「模拟支付」，页面只负责触发与刷新（见 utils/order-actions.ts）
-import { cancelOrderById, cancelOrdersByIds, payOrderById } from '@/utils/order-actions'
+// 内部区分「真实微信支付」与「模拟支付」，页面只负责触发与刷新（见 pages/order/order-actions.ts）
+import { cancelOrderById, cancelOrdersByIds, payOrderById } from './order-actions'
 
 // Mock 数据层：由订单开关控制（USE_ORDER_MOCK，未配置时继承全局开关）
 import { USE_ORDER_MOCK } from '@/utils/mock'
-import { mockQueryOrders } from '@/utils/order-mock'
+import { mockQueryOrders } from './order-mock'
 import Skeleton from '@/components/skeleton/skeleton.vue'
 import { getErrorMessage, reportError } from '@/utils/error'
 
@@ -614,7 +614,7 @@ function onCardTap(order: Order) {
 /**
  * 批量取消
  *
- * 执行与计数都在 utils/order-actions 的 cancelOrdersByIds 里（那里统一走
+ * 执行与计数都在 pages/order/order-actions 的 cancelOrdersByIds 里（那里统一走
  * 状态机、防重复提交、Mock/云端分流），这里只负责提示与收尾。
  * 有失败笔数说明本地这批数据已经过期（多半被超时关单抢先了），全量刷新即可。
  */
@@ -645,7 +645,7 @@ async function batchCancel() {
 /**
  * 支付（列表页快捷操作）
  *
- * 与详情页共用 utils/order-actions 里的同一个 payOrderById()：
+ * 与详情页共用 pages/order/order-actions 里的同一个 payOrderById()：
  *  - 微信小程序端：真实微信支付（云函数下单 → 唤起收银台 → 主动查单确认）
  *  - 个人主体小程序 / H5 / App：模拟支付（详见 README「支付模式开关」）
  *

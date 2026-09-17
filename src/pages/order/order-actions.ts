@@ -11,7 +11,7 @@
  *     本模块 → 业务分支（Mock / 云端、真付 / 模拟）、防重复提交、结果归一化
  *
  * 【两条支付路径】
- *   - 真实微信支付：canUseWechatPayForOrder() 为真时交给 utils/payment.ts
+ *   - 真实微信支付：canUseWechatPayForOrder() 为真时交给 pages/order/payment.ts
  *     （云函数下单 → 唤起收银台 → 主动查单），订单状态由服务端写入
  *   - 模拟支付：其余情况（个人主体小程序 / H5 / App / 未配商户凭证）——
  *     订单状态由 updateOrderStatus 云函数或本地 mock 层写入，并补一条 payment
@@ -24,8 +24,8 @@
  *   本模块只返回结果，回读交给调用页面（见 order-detail / order-list 的用法）。
  * ============================================================
  */
-import { formatCents } from './money'
-import { USE_ORDER_MOCK } from './mock'
+import { USE_ORDER_MOCK } from '@/utils/mock'
+import { formatCents } from '@/utils/money'
 import {
   orderAmountCents,
   updateOrderStatusViaCloud,
@@ -83,7 +83,7 @@ function showConfirm(title: string, content: string, confirmText: string): Promi
  * 两个条件缺一不可：
  *  - USE_ORDER_MOCK 为假：Mock 模式下订单只在本地 storage，云端下单无从谈起
  *  - canUseWechatPay()：环境 + 支付模式允许（个人主体小程序请配 VITE_PAY_MODE=mock，
- *    见 utils/payment.ts，那边会直接返回 false）
+ *    见 pages/order/payment.ts，那边会直接返回 false）
  */
 export function canUseWechatPayForOrder(): boolean {
   return !USE_ORDER_MOCK && canUseWechatPay()

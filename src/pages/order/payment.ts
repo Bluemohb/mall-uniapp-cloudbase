@@ -33,7 +33,7 @@
  *   所以「我没有商户号」这件事必须在代码里显式声明，见下面的 PAY_MODE。
  * ============================================================
  */
-import { ENV_ID, isMpWeixin, isValidEnvId } from './cloudbase'
+import { ENV_ID, isMpWeixin, isValidEnvId } from '@/utils/cloudbase'
 
 /** 支付云函数名（cloudfunctions/wxpayOrder） */
 const PAY_FUNCTION_NAME = 'wxpayOrder'
