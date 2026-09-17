@@ -58,7 +58,10 @@
     "setting": {
       "urlCheck": false
     },
-    "usingComponents": true
+    "usingComponents": true,
+    // 组件按需注入：只注入当前页面用到的组件/页面代码。
+    // 该字段不在 uni-app 的 NON_APP_JSON_KEYS 黑名单里，会被原样合并进产物 app.json。
+    "lazyCodeLoading": "requiredComponents"
   },
   "mp-alipay": {
     "usingComponents": true

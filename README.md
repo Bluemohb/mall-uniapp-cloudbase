@@ -232,6 +232,27 @@ CI（`.github/workflows/ci.yml`）在 push / PR 到 `main` 时执行 lint + type
 
 H5 / 匿名端调用云函数前，需在控制台「云函数 → 安全规则」放行 `createOrder` / `updateOrderStatus` / `wxpayOrder`（否则匿名身份会被 `EXCEED_AUTHORITY` 拦下）。定时任务与支付回调函数**不要**加入白名单。
 
+## 分包与体积
+
+小程序端已启用**分包**与**组件按需注入**（微信开发者工具「代码质量」面板的前两项建议）：
+
+- 主包只留 4 个 tabBar 页（微信要求 tabBar 页必须在主包）：`index` / `products` / `cart` / `profile`
+- 其余页面按目录拆成 7 个分包，声明在 `src/pages.json` 的 `subPackages`
+- **分包 root 直接沿用原目录**（如 `pages/order`），`root + path` 拼出的完整路径与拆分前完全一致，所以 `uni.navigateTo({ url: '/pages/order/order-list' })` 这类跳转**不需要改**
+- 进入 tabBar 页时用 `preloadRule` 预下载接下来最可能用到的分包，避免首次点击的等待
+- `src/manifest.json` → `mp-weixin.lazyCodeLoading: "requiredComponents"` 开启按需注入（uni-app 会把该字段原样合并进产物 `app.json`）
+
+当前体积（`dist/dev` 与 `dist/build` 基本一致）：
+
+| 包 | 体积 |
+| --- | --- |
+| 主包 | ~0.82 MB（微信建议 < 1.5 MB） |
+| 分包合计 | ~0.11 MB |
+
+主包的大头是 `common/vendor.js`（`@cloudbase/js-sdk` 约占七成），分包能搬走的是页面代码，动不了它；要再瘦身只能换更轻的 CloudBase 接入方式（如小程序端走 `wx.cloud`）。
+
+新增页面时注意：放进 `subPackages` 才不会撑大主包；tabBar 页必须留在 `pages` 里。
+
 ## 注意事项
 
 - **改完要重新编译**：`.env`、`mock/products_02.json`、`pages.json`、`manifest.json`、静态资源、新增模块等都属于构建期输入，改完必须重启 dev；新增 `src/utils/**` 模块遇到 `module '...' is not defined` 时，需要删 `dist/dev` 并**完全退出开发者工具再重开**（IDE 缓存了文件快照）。
