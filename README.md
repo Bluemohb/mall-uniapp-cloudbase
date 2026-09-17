@@ -146,12 +146,11 @@ VITE_PAY_MODE=mock      # 个人主体小程序无法开通微信支付，默认
 │   ├── pages/                  # 页面（index / products / product-detail / search /
 │   │                           #   cart / favorite / address / order / login / profile / account）
 │   ├── components/             # goods-card、skeleton、show-captcha
-│   ├── utils/                  # 业务层
+│   ├── utils/                  # 业务层（**只放跨主包/分包共用的模块**，见下方说明）
 │   │   ├── cloudbase.ts        # CloudBase 初始化、登录态、身份绑定
 │   │   ├── cart.ts / favorite.ts / user-scoped-store.ts   # 用户隔离存储（共用工厂）
-│   │   ├── order.ts / order-actions.ts / order-mock.ts    # 订单模型与统一操作入口
-│   │   ├── payment.ts          # 支付通道封装（wx.cloud 与网关的分流）
-│   │   └── money.ts / cache.ts / mock.ts / error.ts       # 金额(分)、TTL 缓存、Mock、统一错误
+│   │   ├── money.ts / cache.ts / mock.ts / error.ts       # 金额(分)、TTL 缓存、Mock、统一错误
+│   │   └── index.ts            # 通用小工具（formatDate、navigateTo 等）
 │   ├── types/                  # 类型定义
 │   ├── static/                 # 图片资源（含 mock 商品图 *.webp）
 │   ├── theme.ts / uni.scss     # 主题 token 双源
@@ -250,6 +249,18 @@ H5 / 匿名端调用云函数前，需在控制台「云函数 → 安全规则�
 | 分包合计 | ~0.11 MB |
 
 主包的大头是 `common/vendor.js`（`@cloudbase/js-sdk` 约占七成），分包能搬走的是页面代码，动不了它；要再瘦身只能换更轻的 CloudBase 接入方式（如小程序端走 `wx.cloud`）。
+
+**⚠️ 只被某个分包用到的模块，必须放在该分包目录里。** uni-app 按 `src/` 下的相对路径输出产物（`src/utils/x.ts` → `utils/x.js`），放在 `src/utils/` 就会进主包，微信「代码质量」会报「主包内不应存在主包未使用的 JS 文件」。订单专用的 4 个模块因此在 `src/pages/order/` 下：
+
+```
+src/pages/order/
+├── order.ts           # 订单类型与纯函数
+├── order-actions.ts   # 支付/取消/发货/收货统一入口
+├── order-mock.ts      # 订单 Mock 数据层
+└── payment.ts         # 支付通道封装（wx.cloud 与网关的分流）
+```
+
+分包引用主包模块没问题（如 `payment.ts` import `@/utils/cloudbase`），反过来不行。
 
 新增页面时注意：放进 `subPackages` 才不会撑大主包；tabBar 页必须留在 `pages` 里。
 
