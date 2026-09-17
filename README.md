@@ -48,7 +48,7 @@ pending(待支付) ──支付──▶ paid(已支付) ──发货──▶ s
 
 ### 1. 环境要求
 
-- Node.js 20+（CI 使用 20）、pnpm 10+
+- Node.js 22+（CI 使用 22，部分 lint 依赖用到 Iterator Helpers）、pnpm 10+
 - 微信开发者工具（小程序端）、CloudBase CLI（部署云函数，可选）
 
 ### 2. 安装依赖
@@ -223,7 +223,7 @@ pnpm run mock:images   # 抓取/更新本地商品图
 pnpm run mock:purge    # 清空本地 Mock 数据
 ```
 
-CI（`.github/workflows/ci.yml`）在 push / PR 到 `main` 时执行 lint + type-check + test（Node 20 + pnpm 10）。
+CI（`.github/workflows/ci.yml`）在 push / PR 到 `main` 时执行 lint + type-check + test（Node 22 + pnpm 10）。
 
 ## 部署
 
