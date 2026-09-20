@@ -1,10 +1,12 @@
 # 购物小程序（Uni-app + 腾讯云开发 CloudBase）
 
+这是一个**个人学习项目**，在 CodeBuddy 辅助下完成，用于学习和实践 Uni-app 跨端开发 + 腾讯云开发 CloudBase 的 Serverless 全链路实现。项目基于 [CloudBase AI ToolKit](https://github.com/TencentCloudBase/CloudBase-AI-ToolKit) 模板起步，模板原始说明与踩坑记录保留在 [README-TEMPLATE.md](./README-TEMPLATE.md)。
+
+## 项目简介
 一个基于 **Uni-app（Vue 3 + TypeScript + Vite）** 与 **腾讯云开发 CloudBase** 的跨端电商小程序示例：商品浏览 → 搜索 → 收藏 → 加购 → 下单 → 支付 → 订单流转，全链路跑通，后端完全 Serverless（云数据库 + 云函数），无需自建服务器。
 
 - 主战场：**微信小程序**（OpenID 静默登录 + 真实微信支付）与 **H5**（匿名登录 + 模拟支付）
 - 同套代码可编译到支付宝 / 抖音小程序与 App（iOS/Android），见「多端运行与构建」
-- 本项目基于 [CloudBase AI ToolKit](https://github.com/TencentCloudBase/CloudBase-AI-ToolKit) 模板起步，模板原始说明与踩坑记录保留在 [`README-TEMPLATE.md`](./README-TEMPLATE.md)
 
 ## 界面预览
 
